@@ -24,47 +24,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Variable pour ton mot de passe (tu pourras le changer plus tard)
-const MON_MOT_DE_PASSE = "1234"; 
-
-const Login = ({ onLogin }) => {
-    const [pass, setPass] = useState('');
-    const [error, setError] = useState(false);
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (pass === MON_MOT_DE_PASSE) {
-            onLogin();
-        } else {
-            setError(true);
-            setPass('');
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
-            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up">
-                <div className="text-5xl mb-6">🔐</div>
-                <h2 className="font-black uppercase tracking-widest text-gray-800 mb-2">Accès Privé</h2>
-                <p className="text-gray-400 text-xs mb-8 italic text-blue-800">Mon Stockage Freelance</p>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <input 
-                        type="password" 
-                        placeholder="Mot de passe..." 
-                        className={`w-full p-5 bg-gray-50 rounded-2xl border-2 outline-none font-bold text-center transition-all ${error ? 'border-red-300 animate-shake' : 'border-transparent focus:border-green-500'}`}
-                        value={pass}
-                        onChange={(e) => { setPass(e.target.value); setError(false); }}
-                    />
-                    {error && <p className="text-red-500 text-[10px] font-bold uppercase tracking-tighter">Code incorrect</p>}
-                    <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-                        Connexion
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
-};
+        const MON_MOT_DE_PASSE = "1234"; 
 
         const STRUCTURE = {
             "Alimentaire": { icon: "🍎", rayons: [
@@ -79,13 +39,53 @@ const Login = ({ onLogin }) => {
             ]}
         };
 
+        const Login = ({ onLogin }) => {
+            const [pass, setPass] = useState('');
+            const [error, setError] = useState(false);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (pass === MON_MOT_DE_PASSE) {
+                    onLogin();
+                } else {
+                    setError(true);
+                    setPass('');
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up border-4 border-white/20">
+                        <div className="text-5xl mb-6">🔐</div>
+                        <h2 className="font-black uppercase tracking-widest text-gray-800 mb-2 italic">Accès Privé</h2>
+                        <p className="text-gray-400 text-xs mb-8 font-bold uppercase tracking-widest">Mon Stockage Freelance</p>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <input 
+                                type="password" 
+                                inputMode="numeric"
+                                placeholder="Mot de passe..." 
+                                className={`w-full p-5 bg-gray-50 rounded-2xl border-2 outline-none font-bold text-center text-xl transition-all ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`}
+                                value={pass}
+                                onChange={(e) => { setPass(e.target.value); setError(false); }}
+                            />
+                            {error && <p className="text-red-500 text-[10px] font-bold uppercase">Code incorrect</p>}
+                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                                Connexion
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
         const App = () => {
-            // On vérifie si une session existe déjà dans le téléphone
-    const [isLoggedIn, setIsLoggedIn] = useState(() => {
-        return localStorage.getItem('stock_session') === 'active';
-    });
+            const [isLoggedIn, setIsLoggedIn] = useState(() => {
+                return localStorage.getItem('stock_session') === 'active';
+            });
+
             const [produits, setProduits] = useState(() => {
-                const saved = localStorage.getItem('mon_stock_v16') || localStorage.getItem('mon_stock_v15') || localStorage.getItem('mon_stock_v14');
+                const saved = localStorage.getItem('mon_stock_v16') || localStorage.getItem('mon_stock_v15');
                 return saved ? JSON.parse(saved) : [];
             });
 
@@ -95,30 +95,17 @@ const Login = ({ onLogin }) => {
             const [openSections, setOpenSections] = useState({});
             const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
 
-            const handleLoginSuccess = () => {
-        localStorage.setItem('stock_session', 'active');
-        setIsLoggedIn(true);
-    };
-
-    // SI PAS CONNECTÉ : ON AFFICHE L'ÉCRAN DE LOGIN
-    if (!isLoggedIn) {
-        return <Login onLogin={handleLoginSuccess} />;
-    }
-
-    // SI CONNECTÉ : ON AFFICHE LE RESTE DE L'APP
-    return (
-        <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
-            {/* Tout ton code actuel de header, main et nav ... */}
-        </div>
-    );
-        };
-
             useEffect(() => {
                 localStorage.setItem('mon_stock_v16', JSON.stringify(produits));
             }, [produits]);
 
+            const handleLoginSuccess = () => {
+                localStorage.setItem('stock_session', 'active');
+                setIsLoggedIn(true);
+            };
+
             const reparerStock = () => {
-                const versions = ['mon_stock_v15','mon_stock_v14','mon_stock_v13','mon_stock_v12','mon_stock_v11','mon_stock_v10'];
+                const versions = ['mon_stock_v15','mon_stock_v14','mon_stock_v13','mon_stock_v12'];
                 let recup = [];
                 versions.forEach(v => {
                     const d = localStorage.getItem(v);
@@ -146,11 +133,15 @@ const Login = ({ onLogin }) => {
                 return { status: 'ok', msg: '' };
             };
 
+            if (!isLoggedIn) {
+                return <Login onLogin={handleLoginSuccess} />;
+            }
+
             return (
                 <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
                     <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-black italic text-lg uppercase tracking-tight text-green-600 underline">MON STOCKAGES</h1>
+                            <h1 className="font-black italic text-lg uppercase tracking-tight text-green-600 underline leading-none">MON STOCKAGES</h1>
                             <div className="flex gap-2">
                                 <button onClick={reparerStock} className="bg-orange-100 p-2 rounded-lg text-xs" title="Réparer">🔄</button>
                                 <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">
@@ -159,7 +150,7 @@ const Login = ({ onLogin }) => {
                             </div>
                         </div>
                         {view === 'home' && (
-                            <input type="text" placeholder="🔍 Rechercher un produit..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            <input type="text" placeholder="🔍 Rechercher un produit..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         )}
                     </header>
 
@@ -240,89 +231,62 @@ const Login = ({ onLogin }) => {
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
                             <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto shadow-2xl overflow-y-auto max-h-[85vh] animate-up border border-white/20">
                                 <h2 className="text-center font-black mb-8 uppercase text-gray-300 text-[10px] tracking-widest italic tracking-tighter">Nouvel Article</h2>
-                                
                                 <input type="text" placeholder="Nom du produit..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 border-none outline-none font-bold text-lg shadow-inner focus:ring-2 focus:ring-green-500 transition-all" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} />
-                                
                                 <div className="grid grid-cols-2 gap-3 mb-4">
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-3">Zone</label>
-                                        <select className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-3 italic">Zone</label>
+                                        <select className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                             {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                         </select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-3">Rayon</label>
-                                        <select className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                        <label className="text-[9px] font-black text-gray-400 uppercase ml-3 italic">Rayon</label>
+                                        <select className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
                                             {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                         </select>
                                     </div>
                                 </div>
-
                                 <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl shadow-inner">
                                     <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>% Contenant</button>
                                     <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>123 Unité</button>
                                 </div>
-
                                 <div className="grid grid-cols-2 gap-3 mb-6">
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-gray-400 uppercase ml-3 italic">Péremption</label>
-                                        <input type="date" className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                        <input type="date" className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     </div>
                                     {form.typeStock === 'unite' && (
                                         <div className="space-y-1 animate-up">
                                             <label className="text-[9px] font-black text-gray-400 uppercase ml-3 italic">Quantité</label>
-                                            <input type="number" placeholder="Qté" className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+                                            <input type="number" placeholder="Qté" className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
                                         </div>
                                     )}
                                 </div>
-
                                 <label className="flex items-center gap-4 mb-4 p-5 bg-blue-50/50 rounded-[1.5rem] cursor-pointer border-2 border-dashed border-blue-100 active:scale-95 transition-all">
-                                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-600 rounded-lg shadow-sm border-none" />
+                                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-600 rounded-lg shadow-sm border-none outline-none" />
                                     <span className="text-[10px] font-black text-blue-800 uppercase italic tracking-tighter">Placé au congélateur ❄️</span>
                                 </label>
-
                                 <label className="flex items-center gap-4 mb-8 p-5 bg-red-50/50 rounded-[1.5rem] cursor-pointer border-2 border-dashed border-red-100 active:scale-95 transition-all">
-                                    <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm border-none" />
+                                    <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm border-none outline-none" />
                                     <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-tight">Ajouter directement en courses 🛒</span>
                                 </label>
-
                                 <div className="space-y-3">
-    <button onClick={() => {
-        const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
-        const nouvelleQte = form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock));
-
-        // Vérifier si un produit identique existe déjà (même nom, date, rayon et mode Unité)
-        const indexExistant = produits.findIndex(p => 
-            p.nom.toLowerCase() === form.nom.toLowerCase() && 
-            p.date === form.date && 
-            p.rayon === form.rayon && 
-            p.typeStock === 'unite' && 
-            form.typeStock === 'unite'
-        );
-
-        if (indexExistant !== -1 && !form.directShopping) {
-            // Si le produit existe, on crée une copie du stock et on additionne la quantité
-            const nouveauStock = [...produits];
-            nouveauStock[indexExistant].stock += nouvelleQte;
-            setProduits(nouveauStock);
-        } else {
-            // Sinon (nouveau produit ou mode pourcentage), on ajoute une nouvelle ligne
-            setProduits([{ ...form, id: Date.now(), icon, stock: nouvelleQte, checked: false }, ...produits]);
-        }
-
-        setShowAddModal(false);
-        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-    }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-[0.2em] text-sm active:scale-95 transition-all">
-        Enregistrer
-    </button>
-    
-    <button onClick={() => {
-        setShowAddModal(false);
-        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-    }} className="w-full text-gray-300 text-[10px] font-black uppercase tracking-widest text-center py-2 active:text-red-400 transition-colors">
-        Annuler
-    </button>
-</div>
+                                    <button onClick={() => {
+                                        const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
+                                        const nouvelleQte = form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock));
+                                        const indexExistant = produits.findIndex(p => p.nom.toLowerCase() === form.nom.toLowerCase() && p.date === form.date && p.rayon === form.rayon && p.typeStock === 'unite' && form.typeStock === 'unite');
+                                        if (indexExistant !== -1 && !form.directShopping) {
+                                            const nouveauStock = [...produits];
+                                            nouveauStock[indexExistant].stock += nouvelleQte;
+                                            setProduits(nouveauStock);
+                                        } else {
+                                            setProduits([{ ...form, id: Date.now(), icon, stock: nouvelleQte, checked: false }, ...produits]);
+                                        }
+                                        setShowAddModal(false);
+                                        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+                                    }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-[0.2em] text-sm active:scale-95 transition-all">Enregistrer</button>
+                                    <button onClick={() => { setShowAddModal(false); setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false }); }} className="w-full text-gray-300 text-[10px] font-black uppercase tracking-widest text-center py-2 active:text-red-400 transition-colors">Annuler</button>
+                                </div>
                             </div>
                         </div>
                     )}
