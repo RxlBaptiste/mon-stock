@@ -24,6 +24,48 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // Variable pour ton mot de passe (tu pourras le changer plus tard)
+const MON_MOT_DE_PASSE = "1234"; 
+
+const Login = ({ onLogin }) => {
+    const [pass, setPass] = useState('');
+    const [error, setError] = useState(false);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (pass === MON_MOT_DE_PASSE) {
+            onLogin();
+        } else {
+            setError(true);
+            setPass('');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
+            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up">
+                <div className="text-5xl mb-6">🔐</div>
+                <h2 className="font-black uppercase tracking-widest text-gray-800 mb-2">Accès Privé</h2>
+                <p className="text-gray-400 text-xs mb-8 italic text-blue-800">Mon Stockage Freelance</p>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <input 
+                        type="password" 
+                        placeholder="Mot de passe..." 
+                        className={`w-full p-5 bg-gray-50 rounded-2xl border-2 outline-none font-bold text-center transition-all ${error ? 'border-red-300 animate-shake' : 'border-transparent focus:border-green-500'}`}
+                        value={pass}
+                        onChange={(e) => { setPass(e.target.value); setError(false); }}
+                    />
+                    {error && <p className="text-red-500 text-[10px] font-bold uppercase tracking-tighter">Code incorrect</p>}
+                    <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                        Connexion
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
         const STRUCTURE = {
             "Alimentaire": { icon: "🍎", rayons: [
                 { id: "Fruit et légume", icon: "🧺" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
@@ -38,6 +80,10 @@
         };
 
         const App = () => {
+            // On vérifie si une session existe déjà dans le téléphone
+    const [isLoggedIn, setIsLoggedIn] = useState(() => {
+        return localStorage.getItem('stock_session') === 'active';
+    });
             const [produits, setProduits] = useState(() => {
                 const saved = localStorage.getItem('mon_stock_v16') || localStorage.getItem('mon_stock_v15') || localStorage.getItem('mon_stock_v14');
                 return saved ? JSON.parse(saved) : [];
@@ -48,6 +94,24 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
             const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+
+            const handleLoginSuccess = () => {
+        localStorage.setItem('stock_session', 'active');
+        setIsLoggedIn(true);
+    };
+
+    // SI PAS CONNECTÉ : ON AFFICHE L'ÉCRAN DE LOGIN
+    if (!isLoggedIn) {
+        return <Login onLogin={handleLoginSuccess} />;
+    }
+
+    // SI CONNECTÉ : ON AFFICHE LE RESTE DE L'APP
+    return (
+        <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
+            {/* Tout ton code actuel de header, main et nav ... */}
+        </div>
+    );
+        };
 
             useEffect(() => {
                 localStorage.setItem('mon_stock_v16', JSON.stringify(produits));
