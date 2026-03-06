@@ -223,19 +223,42 @@
                                 </label>
 
                                 <div className="space-y-3">
-                                    <button onClick={() => {
-                                        const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
-                                        setProduits([{ ...form, id: Date.now(), icon, stock: form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock)), checked: false }, ...produits]);
-                                        setShowAddModal(false);
-                                        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-                                    }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-[0.2em] text-sm active:scale-95 transition-all">Enregistrer</button>
-                                    
-                                    {/* BOUTON ANNULER AJOUTÉ ICI */}
-                                    <button onClick={() => {
-                                        setShowAddModal(false);
-                                        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-                                    }} className="w-full text-gray-300 text-[10px] font-black uppercase tracking-widest text-center py-2 active:text-red-400 transition-colors">Annuler</button>
-                                </div>
+    <button onClick={() => {
+        const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
+        const nouvelleQte = form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock));
+
+        // Vérifier si un produit identique existe déjà (même nom, date, rayon et mode Unité)
+        const indexExistant = produits.findIndex(p => 
+            p.nom.toLowerCase() === form.nom.toLowerCase() && 
+            p.date === form.date && 
+            p.rayon === form.rayon && 
+            p.typeStock === 'unite' && 
+            form.typeStock === 'unite'
+        );
+
+        if (indexExistant !== -1 && !form.directShopping) {
+            // Si le produit existe, on crée une copie du stock et on additionne la quantité
+            const nouveauStock = [...produits];
+            nouveauStock[indexExistant].stock += nouvelleQte;
+            setProduits(nouveauStock);
+        } else {
+            // Sinon (nouveau produit ou mode pourcentage), on ajoute une nouvelle ligne
+            setProduits([{ ...form, id: Date.now(), icon, stock: nouvelleQte, checked: false }, ...produits]);
+        }
+
+        setShowAddModal(false);
+        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+    }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-[0.2em] text-sm active:scale-95 transition-all">
+        Enregistrer
+    </button>
+    
+    <button onClick={() => {
+        setShowAddModal(false);
+        setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+    }} className="w-full text-gray-300 text-[10px] font-black uppercase tracking-widest text-center py-2 active:text-red-400 transition-colors">
+        Annuler
+    </button>
+</div>
                             </div>
                         </div>
                     )}
