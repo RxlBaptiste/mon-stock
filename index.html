@@ -88,13 +88,24 @@
 
             // 1. CHARGER DEPUIS LA BDD AU DEMARRAGE
             useEffect(() => {
-                if (isLoggedIn) {
-                    fetch(`${API_URL}?action=get_stock`)
-                        .then(res => res.json())
-                        .then(data => setProduits(data))
-                        .catch(err => console.error("Erreur BDD:", err));
+    if (isLoggedIn) {
+        fetch(`${API_URL}?action=get_stock`)
+            .then(res => res.json())
+            .then(data => {
+                // SÉCURITÉ : Si on reçoit une erreur du PHP, on met une liste vide
+                if (data && Array.isArray(data)) {
+                    setProduits(data);
+                } else {
+                    console.error("Le serveur n'a pas renvoyé une liste :", data);
+                    setProduits([]); 
                 }
-            }, [isLoggedIn]);
+            })
+            .catch(err => {
+                console.error("Erreur réseau :", err);
+                setProduits([]);
+            });
+    }
+}, [isLoggedIn]);
 
             // 2. FONCTION DE SAUVEGARDE SERVEUR
             const syncWithServer = async (produit) => {
