@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Stock Expert v14</title>
+    <link rel="manifest" href="data:application/manifest+json,{'display':'standalone','name':'Mon Stock Pro','short_name':'Stock','start_url':'/','background_color':'#ffffff','theme_color':'#22c55e'}" />
+    <title>Mon Stock Expert v15</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         body { touch-action: manipulation; font-family: sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
         .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-up { animation: slideUp 0.3s ease-out; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -35,7 +39,7 @@
 
         const App = () => {
             const [produits, setProduits] = useState(() => {
-                const saved = localStorage.getItem('mon_stock_v14') || localStorage.getItem('mon_stock_v13') || localStorage.getItem('mon_stock_v12');
+                const saved = localStorage.getItem('mon_stock_v15') || localStorage.getItem('mon_stock_v14') || localStorage.getItem('mon_stock_v13') || localStorage.getItem('mon_stock_v12');
                 return saved ? JSON.parse(saved) : [];
             });
 
@@ -43,38 +47,22 @@
             const [showAddModal, setShowAddModal] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', congele: false });
+            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
 
             useEffect(() => {
-                localStorage.setItem('mon_stock_v14', JSON.stringify(produits));
+                localStorage.setItem('mon_stock_v15', JSON.stringify(produits));
             }, [produits]);
 
-            // RÉCUPÉRATION DES PRODUITS PERDUS
             const reparerStock = () => {
-                const versions = ['mon_stock_v13', 'mon_stock_v12', 'mon_stock_v11', 'mon_stock_v10', 'mon_stock_v9'];
-                let totalRecupere = [];
-                
+                const versions = ['mon_stock_v14','mon_stock_v13','mon_stock_v12','mon_stock_v11','mon_stock_v10','mon_stock_v9'];
+                let recup = [];
                 versions.forEach(v => {
-                    const data = localStorage.getItem(v);
-                    if (data) {
-                        const parsed = JSON.parse(data);
-                        totalRecupere = [...totalRecupere, ...parsed];
-                    }
+                    const d = localStorage.getItem(v);
+                    if(d) recup = [...recup, ...JSON.parse(d)];
                 });
-
-                // Supprime les doublons par nom
-                const clean = Array.from(new Map([...totalRecupere, ...produits].map(item => [item.nom, item])).values());
-                
-                // Correction auto des rayons pour correspondre à la nouvelle liste
-                const final = clean.map(p => {
-                    if (p.rayon === "Boisson") return { ...p, rayon: "Boissons" };
-                    if (p.rayon === "Entretien") return { ...p, rayon: "Produit d'entretien" };
-                    if (p.rayon === "Hygiène Corporelle") return { ...p, rayon: "Corporelle" };
-                    return p;
-                });
-
-                setProduits(final);
-                alert(`${final.length} produits synchronisés ! Vérifie tes catégories.`);
+                const clean = Array.from(new Map([...recup, ...produits].map(i => [i.nom, i])).values());
+                setProduits(clean);
+                alert("Stock synchronisé !");
             };
 
             const updateStock = (id, delta) => {
@@ -98,9 +86,9 @@
                 <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
                     <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-black italic text-lg uppercase">📦 Stock v14</h1>
+                            <h1 className="font-black italic text-lg uppercase">📦 Stock v15</h1>
                             <div className="flex gap-2">
-                                <button onClick={reparerStock} title="Réparer le stock" className="bg-orange-100 p-2 rounded-lg text-lg">🔄</button>
+                                <button onClick={reparerStock} className="bg-orange-100 p-2 rounded-lg">🔄</button>
                                 <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase">
                                     {view === 'home' ? 'Courses' : 'Stock'}
                                 </button>
@@ -126,37 +114,39 @@
                                             const rayItems = zoneItems.filter(p => p.rayon === ray.id);
                                             if (rayItems.length === 0) return null;
                                             return (
-                                                <div key={ray.id} className="ml-4 mb-2 bg-white rounded-xl border overflow-hidden">
-                                                    <div className="p-2 text-[10px] font-black uppercase text-gray-400 px-4 border-b bg-gray-50 flex justify-between">
+                                                <div key={ray.id} className="ml-4 mb-2 bg-white rounded-xl border overflow-hidden shadow-sm">
+                                                    <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-2 text-[10px] font-black uppercase text-gray-400 px-4 bg-gray-50 flex justify-between border-b">
                                                         <span>{ray.icon} {ray.id}</span>
-                                                        <span>{rayItems.length}</span>
-                                                    </div>
-                                                    <div className="p-2 space-y-2">
-                                                        {rayItems.map(p => {
-                                                            const dlc = checkDLC(p.date, p.congele);
-                                                            return (
-                                                                <div key={p.id} className={`p-4 rounded-xl border ${dlc.status === 'warning' ? 'warning-dlc' : dlc.status === 'expired' ? 'bg-red-50' : 'bg-white'}`}>
-                                                                    <div className="flex justify-between items-center mb-2">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold text-sm">{p.nom}</span>
-                                                                            {dlc.msg && <span className="text-[8px] font-black text-red-600 tracking-tighter">{dlc.msg}</span>}
+                                                        <span>{rayItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {openSections[ray.id] && (
+                                                        <div className="p-2 space-y-2">
+                                                            {rayItems.map(p => {
+                                                                const dlc = checkDLC(p.date, p.congele);
+                                                                return (
+                                                                    <div key={p.id} className={`p-4 rounded-xl border ${dlc.status === 'warning' ? 'warning-dlc' : dlc.status === 'expired' ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
+                                                                        <div className="flex justify-between items-center mb-2">
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-bold text-sm">{p.nom}</span>
+                                                                                {dlc.msg && <span className="text-[8px] font-black text-red-600 tracking-tighter">{dlc.msg}</span>}
+                                                                            </div>
+                                                                            <span className="text-[10px] font-black px-2 py-1 bg-gray-100 rounded-lg">{p.typeStock === 'pourcent' ? p.stock+'%' : 'Qté: '+p.stock}</span>
                                                                         </div>
-                                                                        <span className="text-[10px] font-bold bg-gray-100 px-2 py-1 rounded-lg">{p.typeStock === 'pourcent' ? p.stock+'%' : 'Qté: '+p.stock}</span>
+                                                                        <div className="flex justify-between items-center">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-[9px] text-gray-400 font-bold">{p.date || 'Pas de date'}</span>
+                                                                                <button onClick={() => setProduits(produits.map(i => i.id === p.id ? {...i, congele: !i.congele} : i))} className={`text-[10px] p-1 rounded font-black ${p.congele ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>❄️</button>
+                                                                            </div>
+                                                                            <div className="flex gap-2">
+                                                                                <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border rounded-xl font-bold active:bg-gray-100 shadow-sm">-</button>
+                                                                                <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border rounded-xl font-bold active:bg-gray-100 shadow-sm">+</button>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex justify-between items-center">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-[9px] text-gray-400">{p.date || 'Pas de date'}</span>
-                                                                            <button onClick={() => setProduits(produits.map(i => i.id === p.id ? {...i, congele: !i.congele} : i))} className={`text-[10px] p-1 rounded font-black ${p.congele ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>❄️</button>
-                                                                        </div>
-                                                                        <div className="flex gap-2">
-                                                                            <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border rounded-xl font-bold">-</button>
-                                                                            <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border rounded-xl font-bold">+</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -168,29 +158,24 @@
                                 {produits.filter(p => p.stock === 0 || p.checked).map(p => (
                                     <div key={p.id} className="flex items-center justify-between p-4">
                                         <div className="flex items-center gap-3">
-                                            <input type="checkbox" checked={p.checked} onChange={() => setProduits(produits.map(i => i.id === p.id ? {...i, checked: !i.checked} : i))} className="w-6 h-6 accent-black" />
+                                            <input type="checkbox" checked={p.checked} onChange={() => setProduits(produits.map(i => i.id === p.id ? {...i, checked: !i.checked} : i))} className="w-6 h-6 accent-black shadow-sm" />
                                             <div>
                                                 <p className={`font-bold text-sm ${p.checked ? 'line-through opacity-20' : ''}`}>{p.nom}</p>
-                                                <p className="text-[9px] text-gray-400 font-black uppercase">{p.rayon}</p>
+                                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-tighter">{p.rayon}</p>
                                             </div>
                                         </div>
-                                        <button onClick={() => setProduits(produits.filter(i => i.id !== p.id))} className="text-gray-300">✕</button>
+                                        <button onClick={() => setProduits(produits.filter(i => i.id !== p.id))} className="text-gray-300 p-2">✕</button>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </main>
 
-                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[85%] max-w-md bg-white border p-2 rounded-[2.5rem] flex justify-around shadow-2xl z-40">
-                        <button onClick={() => setView('home')} className={`p-4 ${view === 'home' ? 'scale-125 text-black' : 'text-gray-200'}`}>🏠</button>
-                        <button onClick={() => setShowAddModal(true)} className="bg-green-500 text-white w-14 h-14 rounded-full text-3xl shadow-xl active:scale-90">+</button>
-                        <button onClick={() => setView('shopping')} className={`p-4 ${view === 'shopping' ? 'scale-125 text-black' : 'text-gray-200'}`}>🛒</button>
-                    </nav>
-
                     {showAddModal && (
                         <div className="fixed inset-0 bg-black/60 flex items-end z-50 p-4">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto shadow-2xl overflow-y-auto max-h-[85vh]">
-                                <input type="text" placeholder="Nom..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 border-none font-bold text-lg" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} />
+                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto shadow-2xl overflow-y-auto max-h-[85vh] animate-up">
+                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
+                                <input type="text" placeholder="Nom..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 border outline-none font-bold text-lg" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-2 mb-4">
                                     <select className="p-3 bg-white border rounded-xl text-[10px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
@@ -199,18 +184,37 @@
                                         {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <input type="date" className="p-3 bg-white border rounded-xl text-[10px] font-bold" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    <input type="number" placeholder="Qté" className="p-3 bg-white border rounded-xl text-[10px] font-bold" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+                                <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-xl">
+                                    <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${form.typeStock === 'pourcent' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>% Contenant</button>
+                                    <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${form.typeStock === 'unite' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>123 Unité</button>
                                 </div>
+                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                    <input type="date" className="p-3 bg-white border rounded-xl text-[10px] font-bold uppercase" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                    {form.typeStock === 'unite' && <input type="number" placeholder="Qté" className="p-3 bg-white border rounded-xl text-[10px] font-bold" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />}
+                                </div>
+                                <label className="flex items-center gap-3 mb-4 p-4 bg-blue-50 rounded-2xl border-2 border-dashed border-blue-100">
+                                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-5 h-5 accent-blue-600 shadow-sm" />
+                                    <span className="text-[10px] font-black text-blue-800 uppercase italic">Congélateur ❄️</span>
+                                </label>
+                                <label className="flex items-center gap-3 mb-6 p-4 bg-red-50 rounded-2xl border-2 border-dashed border-red-100 active:scale-95 transition-all">
+                                    <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm" />
+                                    <span className="text-[10px] font-black text-red-700 uppercase italic leading-none">Ajouter en liste de courses</span>
+                                </label>
                                 <button onClick={() => {
                                     const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
-                                    setProduits([{ ...form, id: Date.now(), icon, checked: false }, ...produits]);
+                                    setProduits([{ ...form, id: Date.now(), icon, stock: form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock)), checked: false }, ...produits]);
                                     setShowAddModal(false);
-                                }} className="w-full bg-black text-white p-5 rounded-[2rem] font-black shadow-xl">ENREGISTRER</button>
+                                    setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+                                }} className="w-full bg-black text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-widest active:scale-95 transition-all">Enregistrer</button>
                             </div>
                         </div>
                     )}
+
+                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white border p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40">
+                        <button onClick={() => setView('home')} className={`p-4 ${view === 'home' ? 'text-black scale-125' : 'text-gray-200'}`}>🏠</button>
+                        <button onClick={() => setShowAddModal(true)} className="bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-90 transition-all font-light">+</button>
+                        <button onClick={() => setView('shopping')} className={`p-4 ${view === 'shopping' ? 'text-black scale-125' : 'text-gray-200'}`}>🛒</button>
+                    </nav>
                 </div>
             );
         };
