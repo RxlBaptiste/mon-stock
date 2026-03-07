@@ -167,6 +167,16 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
     syncWithServer(updated);
     setConfirmModal({ show: false, produit: null });
 };
+        const refuserAjoutEtSupprimer = (p) => {
+    // 1. On supprime sur le serveur
+    fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
+    
+    // 2. On retire de l'affichage local
+    setProduits(produits.filter(item => item.id !== p.id));
+    
+    // 3. On ferme la fenêtre
+    setConfirmModal({ show: false, produit: null });
+};
 
         // --- NOUVELLE FONCTION ACHETER ---
         const validerAchats = () => {
@@ -419,21 +429,24 @@ const formatDateFR = (dateUS) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6">
         <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up text-center border-4 border-green-500">
             <div className="text-4xl mb-4">🛒</div>
-            <h3 className="font-black uppercase text-sm mb-2">Liste de courses</h3>
+            <h3 className="font-black uppercase text-sm mb-2">LISTE DE COURSES</h3>
             <p className="text-gray-500 text-xs mb-8">Ajouter <b>{confirmModal.produit?.nom}</b> à la liste ?</p>
             
             <div className="flex gap-3">
+                {/* BOUTON NON : Maintenant il supprime le produit */}
                 <button 
-                    onClick={() => setConfirmModal({ show: false, produit: null })}
+                    onClick={() => refuserAjoutEtSupprimer(confirmModal.produit)}
                     className="flex-1 bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]"
                 >
-                    Non
+                    NON
                 </button>
+
+                {/* BOUTON OUI : Garde l'ancien fonctionnement */}
                 <button 
                     onClick={confirmerAjoutCourses}
                     className="flex-1 bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg"
                 >
-                    Oui
+                    OUI
                 </button>
             </div>
         </div>
