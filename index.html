@@ -130,55 +130,21 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
 
         // --- NOUVELLE FONCTION ACHETER ---
         const validerAchats = () => {
-    const aTraiter = produits.filter(p => p.checked == 1);
-    if (aTraiter.length === 0) return alert("Cochez d'abord les produits achetés !");
+            const aTraiter = produits.filter(p => p.checked == 1);
+            if (aTraiter.length === 0) return alert("Cochez d'abord les produits achetés !");
 
-    const nouveauxProduits = [...produits];
-
-    for (let i = 0; i < nouveauxProduits.length; i++) {
-        let p = nouveauxProduits[i];
-        if (p.checked == 1) {
-            let nouvelleQte = p.typeStock === 'pourcent' ? 100 : 1;
-            let nouvelleDate = p.date;
-
-            // 1. Demander la Quantité (uniquement pour le mode Unité)
-            if (p.typeStock === 'unite') {
-                const qteSaisie = prompt(`Combien de "${p.nom}" as-tu acheté ?`, "1");
-                nouvelleQte = qteSaisie !== null ? Number(qteSaisie) : 1;
-            }
-
-            // 2. Demander la DLC
-            const dateSaisie = prompt(`Nouvelle DLC pour "${p.nom}" ? (Format: JJ-MM-AAAA)`, "");
-                    let dateStock = p.date;
-                    if (dateSaisie) {
-                        // On convertit JJ-MM-AAAA en AAAA-MM-JJ pour que le système de notification continue de marcher
-                        const parts = dateSaisie.split('-');
-                        if(parts.length === 3) {
-                            dateStock = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                        } else {
-                            dateStock = dateSaisie; 
-                        }
-                    }
-
-            // Mise à jour de l'objet
-            const updated = { ...p, stock: nouvelleQte, date: nouvelleDate, checked: 0 };
-            nouveauxProduits[i] = updated;
-            await syncWithServer(updated); // On attend la synchro BDD
-        }
-    }
-setPurchaseQueue(aTraiter);
-    setCurrentPurchaseIdx(0);
-    
-    // On pré-remplit le formulaire pour le premier produit
-    setForm({
-        stock: aTraiter[0].typeStock === 'unite' ? 1 : 100,
-        date: '' // Vide pour le calendrier
-    });
-    setShowPurchaseModal(true);
+            setPurchaseQueue(aTraiter);
+            setCurrentPurchaseIdx(0);
             
-    setView('home');
-    alert("Stock mis à jour !");
-};
+            // On pré-remplit le formulaire pour le premier produit de la liste
+            setForm({
+                stock: aTraiter[0].typeStock === 'unite' ? 1 : 100,
+                date: '', // Vide pour laisser le choix au calendrier
+                nom: aTraiter[0].nom // Pour l'affichage
+            });
+            
+            setShowPurchaseModal(true);
+        };
 const enregistrerEtapeAchat = async () => {
     const p = purchaseQueue[currentPurchaseIdx];
     
