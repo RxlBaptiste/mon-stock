@@ -171,6 +171,14 @@
             return { status: 'ok', msg: '' };
         };
 
+        // Fonction pour transformer AAAA-MM-JJ en JJ-MM-AAAA
+const formatDateFR = (dateUS) => {
+    if (!dateUS) return '';
+    const parts = dateUS.split('-');
+    if (parts.length !== 3) return dateUS;
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+};
+
         if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
 
         return (
@@ -222,7 +230,7 @@
                                                                     </div>
                                                                     <div className="flex justify-between items-center">
                                                                         <div className="flex items-center gap-2">
-                                                                            <span className="text-[9px] text-gray-400 font-bold italic">{p.date ? '⌛ '+p.date : '♻️ Sans date'}</span>
+                                                                            <span className="text-[9px] text-gray-400 font-bold italic">{p.date ? '⌛ ' + formatDateFR(p.date) : '♻️ Sans date'}</span>
                                                                             <button onClick={() => {
                                                                                 const updated = {...p, congele: p.congele == 1 ? 0 : 1};
                                                                                 setProduits(produits.map(i => i.id === p.id ? updated : i));
