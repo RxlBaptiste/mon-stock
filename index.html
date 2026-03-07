@@ -259,21 +259,12 @@ const formatDateFR = (dateUS) => {
 
         // On calcule les alertes uniquement pour les produits en stock (stock > 0)
 const produitsEnStock = produits.filter(p => Number(p.stock) > 0);
-        const listePerimes = produitsEnStock.filter(p => checkDLC(p.date, p.congele == 1).status === 'expired');
+
+const listePerimes = produitsEnStock.filter(p => checkDLC(p.date, p.congele == 1).status === 'expired');
 const listeWarnings = produitsEnStock.filter(p => checkDLC(p.date, p.congele == 1).status === 'warning');
 
 const perimes = listePerimes.length;
 const bientotPerimes = listeWarnings.length;
-
-const perimes = produitsEnStock.filter(p => {
-    const dlc = checkDLC(p.date, p.congele == 1);
-    return dlc.status === 'expired';
-}).length;
-
-const bientotPerimes = produitsEnStock.filter(p => {
-    const dlc = checkDLC(p.date, p.congele == 1);
-    return dlc.status === 'warning';
-}).length;
 
         if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
 
