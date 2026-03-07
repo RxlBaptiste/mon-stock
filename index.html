@@ -64,6 +64,9 @@
     };
 
     const App = () => {
+        const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+const [purchaseItems, setPurchaseItems] = useState([]);
+const [currentItemIdx, setCurrentItemIdx] = useState(0);
         const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
         const [produits, setProduits] = useState([]);
         const [view, setView] = useState('home');
@@ -122,8 +125,8 @@
 
         // --- NOUVELLE FONCTION ACHETER ---
         const validerAchats = async () => {
-    const cocherAchetes = produits.filter(p => p.checked == 1);
-    if (cocherAchetes.length === 0) return alert("Cochez d'abord les produits achetés !");
+            const aTraiter = produits.filter(p => p.checked == 1);
+    if (aTraiter.length === 0) return alert("Cochez d'abord vos achats !");
 
     const nouveauxProduits = [...produits];
 
@@ -159,9 +162,15 @@
         }
     }
 
-    setProduits(nouveauxProduits);
-    setView('home');
-    alert("Stock mis à jour !");
+    setPurchaseItems(aTraiter);
+    setCurrentItemIdx(0);
+    // On initialise le formulaire avec les infos de l'article
+    setForm({ 
+        ...aTraiter[0], 
+        stock: aTraiter[0].typeStock === 'unite' ? 1 : 100,
+        date: '' // Vide pour forcer la saisie du calendrier
+    });
+    setShowPurchaseModal(true);
 };
         const checkDLC = (dateStr, congele) => {
             if (!dateStr || congele) return { status: 'ok', msg: '' };
