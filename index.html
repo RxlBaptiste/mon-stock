@@ -107,6 +107,8 @@ const PASS_SOEUR = "1234"; // Le code de ta soeur
         const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 const [purchaseQueue, setPurchaseQueue] = useState([]);
 const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
+        
+        const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
         useEffect(() => {
             if (isLoggedIn) {
