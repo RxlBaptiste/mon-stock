@@ -1,37 +1,44 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="apple-touch-icon" href="https://via.placeholder.com/180/22c55e/ffffff?text=S"> <link rel="icon" href="https://via.placeholder.com/180/22c55e/ffffff?text=S"> <link rel="manifest" href='data:application/manifest+json,{
-    "name": "Mon Stockage",
-    "short_name": "Stock",
-    "start_url": "./",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#22c55e",
-    "icons": [
-        {
-            "src": "https://via.placeholder.com/512/22c55e/ffffff?text=S", 
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
-        }
-    ]
-}'>
-    <!--<link rel="manifest" href="data:application/manifest+json,{'display':'standalone','name':'Mon Stock Pro','short_name':'Stock','start_url':'/','background_color':'#ffffff','theme_color':'#22c55e'}" />-->
-    <title>Mon Stock Expert v19</title>
+    <meta name="theme-color" content="#22c55e">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
+    <link rel="icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
+
+    <link rel="manifest" href='data:application/manifest+json,{
+        "name": "Mon Stockage",
+        "short_name": "Stock",
+        "start_url": ".",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#22c55e",
+        "icons": [
+            {
+                "src": "https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any maskable"
+            }
+        ]
+    }'>
+    
+    <title>Mon Stockage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <style>
-        body { touch-action: manipulation; font-family: sans-serif; }
+        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
         .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-up { animation: slideUp 0.3s ease-out; }
+        * { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-gray-100">
