@@ -25,7 +25,8 @@
     const API_URL = "https://baptisterouxel.fr/stock/api.php";
     const { useState, useEffect } = React;
 
-    const MON_MOT_DE_PASSE = "1234"; 
+    const PASS_BAPTISTE = "1234";
+const PASS_SOEUR = "5678"; // Le code de ta soeur
 
     const STRUCTURE = {
         "Alimentaire": { icon: "🍎", rayons: [
@@ -44,10 +45,18 @@
         const [pass, setPass] = useState('');
         const [error, setError] = useState(false);
         const handleSubmit = (e) => {
-            e.preventDefault();
-            if (pass === MON_MOT_DE_PASSE) onLogin();
-            else { setError(true); setPass(''); }
-        };
+    e.preventDefault();
+    if (pass === PASS_BAPTISTE) {
+        localStorage.setItem('stock_user', 'baptiste');
+        onLogin();
+    } else if (pass === PASS_SOEUR) {
+        localStorage.setItem('stock_user', 'soeur');
+        onLogin();
+    } else {
+        setError(true);
+        setPass('');
+    }
+};
         return (
             <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
                 <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up border-4 border-white/20">
@@ -78,7 +87,11 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
 
         useEffect(() => {
             if (isLoggedIn) {
-                fetch(`${API_URL}?action=get_stock`)
+                // On récupère l'utilisateur (baptiste ou soeur)
+                const user = localStorage.getItem('stock_user') || 'baptiste';
+                
+                // On ajoute &user=... à la fin de l'URL
+                fetch(`${API_URL}?action=get_stock&user=${user}`)
                     .then(res => res.json())
                     .then(data => {
                         if (data && Array.isArray(data)) setProduits(data);
@@ -90,7 +103,11 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
 
         const syncWithServer = async (produit) => {
             try {
-                await fetch(`${API_URL}?action=save_product`, {
+                // On récupère l'utilisateur (baptiste ou soeur)
+                const user = localStorage.getItem('stock_user') || 'baptiste';
+
+                // On ajoute &user=... à la fin de l'URL
+                await fetch(`${API_URL}?action=save_product&user=${user}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(produit)
