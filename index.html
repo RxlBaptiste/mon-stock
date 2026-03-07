@@ -29,7 +29,7 @@
 
     const STRUCTURE = {
         "Alimentaire": { icon: "🍎", rayons: [
-            { id: "Fruit et légume", icon: "🧺" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
+            { id: "Fruits et légumes", icon: "🧺" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
             { id: "Cremerie", icon: "🥛" }, { id: "Fromagerie", icon: "🧀" }, { id: "Surgelées", icon: "❄️" },
             { id: "Salée", icon: "🧂" }, { id: "Sucré", icon: "🍪" }, { id: "Boulangerie", icon: "🥖" },
             { id: "Boissons", icon: "🍷" }
@@ -70,7 +70,7 @@
         const [showAddModal, setShowAddModal] = useState(false);
         const [searchTerm, setSearchTerm] = useState('');
         const [openSections, setOpenSections] = useState({});
-        const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruit et légume', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+        const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
 
         useEffect(() => {
             if (isLoggedIn) {
@@ -105,7 +105,7 @@
         let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
         
         if (next <= 0) {
-            if (confirm(`Plus de ${p.nom} ?`)) {
+            if (confirm(`Ajouter à la liste de course : ${p.nom} ?`)) {
                 const updated = { ...p, stock: 0, checked: 0 }; // checked: 0 l'envoie en liste de courses
                 syncWithServer(updated);
                 return updated;
@@ -177,7 +177,7 @@
             <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
                 <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
                     <div className="flex justify-between items-center mb-4">
-                        <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGES</h1>
+                        <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGE</h1>
                         <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">
                             {view === 'home' ? 'Courses' : 'Stock'}
                         </button>
@@ -301,8 +301,8 @@
                                 </select>
                             </div>
                             <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl shadow-inner">
-                                <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>% Contenant</button>
-                                <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>123 Unité</button>
+                                <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>Quantité en %</button>
+                                <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>Nombre d'unité</button>
                             </div>
                             <div className="grid grid-cols-2 gap-3 mb-6">
                                 <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
@@ -314,7 +314,7 @@
                             </label>
                             <label className="flex items-center gap-4 mb-8 p-5 bg-red-50/50 rounded-[1.5rem] cursor-pointer border-2 border-dashed border-red-100 active:scale-95 transition-all">
                                 <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm border-none outline-none" />
-                                <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-tight">Ajouter directement en courses 🛒</span>
+                                <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-tight">Ajouter directement dans la liste de course 🛒</span>
                             </label>
                             <div className="space-y-3">
                                 <button onClick={() => {
