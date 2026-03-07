@@ -256,6 +256,19 @@ const formatDateFR = (dateUS) => {
     }
 };
 
+        // On calcule les alertes uniquement pour les produits en stock (stock > 0)
+const produitsEnStock = produits.filter(p => Number(p.stock) > 0);
+
+const perimes = produitsEnStock.filter(p => {
+    const dlc = checkDLC(p.date, p.congele == 1);
+    return dlc.status === 'expired';
+}).length;
+
+const bientotPerimes = produitsEnStock.filter(p => {
+    const dlc = checkDLC(p.date, p.congele == 1);
+    return dlc.status === 'warning';
+}).length;
+
         if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
 
         return (
@@ -279,6 +292,29 @@ const formatDateFR = (dateUS) => {
                 </header>
 
                 <main className="p-4">
+                    {view === 'home' && (perimes > 0 || bientotPerimes > 0) && (
+    <div className="mb-6 space-y-2 animate-up">
+        {perimes > 0 && (
+            <div className="bg-red-500 text-white p-4 rounded-[1.5rem] shadow-lg flex items-center gap-3 border-b-4 border-red-700">
+                <span className="text-2xl">🚨</span>
+                <div>
+                    <p className="font-black text-[10px] uppercase tracking-widest leading-none">Alerte Critique</p>
+                    <p className="text-xs font-bold">{perimes} produit(s) périmé(s) à jeter !</p>
+                </div>
+            </div>
+        )}
+        
+        {bientotPerimes > 0 && (
+            <div className="bg-orange-400 text-white p-4 rounded-[1.5rem] shadow-lg flex items-center gap-3 border-b-4 border-orange-600">
+                <span className="text-2xl">⏳</span>
+                <div>
+                    <p className="font-black text-[10px] uppercase tracking-widest leading-none">À consommer vite</p>
+                    <p className="text-xs font-bold">{bientotPerimes} produit(s) arrivent à échéance.</p>
+                </div>
+            </div>
+        )}
+    </div>
+)}
                     {view === 'home' ? (
                         Object.keys(STRUCTURE).map(zone => {
                             const zoneItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
