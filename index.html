@@ -140,8 +140,17 @@
             }
 
             // 2. Demander la DLC
-            const dateSaisie = prompt(`Nouvelle DLC pour "${p.nom}" ? (Format: AAAA-MM-JJ ou laisse vide)`, p.date);
-            nouvelleDate = dateSaisie !== null ? dateSaisie : p.date;
+            const dateSaisie = prompt(`Nouvelle DLC pour "${p.nom}" ? (Format: JJ-MM-AAAA)`, "");
+                    let dateStock = p.date;
+                    if (dateSaisie) {
+                        // On convertit JJ-MM-AAAA en AAAA-MM-JJ pour que le système de notification continue de marcher
+                        const parts = dateSaisie.split('-');
+                        if(parts.length === 3) {
+                            dateStock = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        } else {
+                            dateStock = dateSaisie; 
+                        }
+                    }
 
             // Mise à jour de l'objet
             const updated = { ...p, stock: nouvelleQte, date: nouvelleDate, checked: 0 };
