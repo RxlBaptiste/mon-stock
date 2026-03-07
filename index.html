@@ -160,23 +160,6 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
     });
     setProduits(nouveauxProduits);
 };
-        const confirmerAjoutCourses = () => {
-    const p = confirmModal.produit;
-    const updated = { ...p, stock: 0, checked: 0 };
-    setProduits(produits.map(item => item.id === p.id ? updated : item));
-    syncWithServer(updated);
-    setConfirmModal({ show: false, produit: null });
-};
-        const refuserAjoutEtSupprimer = (p) => {
-    // 1. On supprime sur le serveur
-    fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
-    
-    // 2. On retire de l'affichage local
-    setProduits(produits.filter(item => item.id !== p.id));
-    
-    // 3. On ferme la fenêtre
-    setConfirmModal({ show: false, produit: null });
-};
 
         // --- NOUVELLE FONCTION ACHETER ---
         const validerAchats = () => {
@@ -195,31 +178,38 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
             
             setShowPurchaseModal(true);
         };
+        
+        const confirmerAjoutCourses = () => {
+    const p = confirmModal.produit;
+    const updated = { ...p, stock: 0, checked: 0 };
+    setProduits(produits.map(item => item.id === p.id ? updated : item));
+    syncWithServer(updated);
+    setConfirmModal({ show: false, produit: null });
+};
+
+const refuserAjoutEtSupprimer = (p) => {
+    // 1. Suppression serveur avec le currentUser pour la bonne table
+    fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
+    
+    // 2. Suppression locale
+    setProduits(produits.filter(item => item.id !== p.id));
+    
+    // 3. Fermeture de la modale
+    setConfirmModal({ show: false, produit: null });
+};
+
 const enregistrerEtapeAchat = async () => {
     const p = purchaseQueue[currentPurchaseIdx];
-    
-    // On prépare l'objet mis à jour
-    const updated = { 
-        ...p, 
-        stock: form.stock, 
-        date: form.date, // Le calendrier renvoie déjà du AAAA-MM-JJ (parfait pour la BDD)
-        checked: 0 
-    };
+    const updated = { ...p, stock: form.stock, date: form.date, checked: 0 };
 
-    // Mise à jour locale et serveur
     setProduits(prev => prev.map(item => item.id === p.id ? updated : item));
     await syncWithServer(updated);
 
     if (currentPurchaseIdx < purchaseQueue.length - 1) {
-        // On passe au suivant
         const suivant = purchaseQueue[currentPurchaseIdx + 1];
         setCurrentPurchaseIdx(prev => prev + 1);
-        setForm({
-            stock: suivant.typeStock === 'unite' ? 1 : 100,
-            date: ''
-        });
+        setForm({ stock: suivant.typeStock === 'unite' ? 1 : 100, date: '' });
     } else {
-        // C'est fini
         setShowPurchaseModal(false);
         setView('home');
         alert("Stock mis à jour avec succès !");
@@ -434,8 +424,7 @@ const formatDateFR = (dateUS) => {
             
             <div className="flex gap-3">
                 {/* BOUTON NON : Maintenant il supprime le produit */}
-                <button 
-                    onClick={() => refuserAjoutEtSupprimer(confirmModal.produit)}
+                <button onClick={() => refuserAjoutEtSupprimer(confirmModal.produit)}
                     className="flex-1 bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]"
                 >
                     NON
