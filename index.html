@@ -100,43 +100,60 @@
         };
 
         const updateStock = (id, delta) => {
-            const nouveauxProduits = produits.map(p => {
-                if (p.id !== id) return p;
-                let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
-                if (next <= 0) {
-                    if (confirm(`Plus de ${p.nom} ?`)) {
-                        const updated = { ...p, stock: 0, checked: false };
-                        syncWithServer(updated);
-                        return updated;
-                    }
-                    fetch(`${API_URL}?action=delete_product&id=${id}`);
-                    return null;
-                }
-                const updated = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
+    const nouveauxProduits = produits.map(p => {
+        if (p.id != id) return p;
+        let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
+        
+        if (next <= 0) {
+            if (confirm(`Plus de ${p.nom} ?`)) {
+                const updated = { ...p, stock: 0, checked: 0 }; // checked: 0 l'envoie en liste de courses
                 syncWithServer(updated);
                 return updated;
-            }).filter(Boolean);
-            setProduits(nouveauxProduits);
-        };
+            }
+            fetch(`${API_URL}?action=delete_product&id=${id}`);
+            return null;
+        }
+        const updated = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
+        syncWithServer(updated);
+        return updated;
+    }).filter(Boolean);
+    setProduits(nouveauxProduits);
+};
 
         // --- NOUVELLE FONCTION ACHETER ---
-        const validerAchats = () => {
-            const cocherAchetes = produits.filter(p => p.checked == 1);
-            if (cocherAchetes.length === 0) return alert("Cochez d'abord les produits achetés !");
+        const validerAchats = async () => {
+    const cocherAchetes = produits.filter(p => p.checked == 1);
+    if (cocherAchetes.length === 0) return alert("Cochez d'abord les produits achetés !");
 
-            const nouveauxProduits = produits.map(p => {
-                if (p.checked == 1) {
-                    // Si on achète, on remet le stock à 100% (ou 1 unité) et on décoche
-                    const updated = { ...p, stock: p.typeStock === 'pourcent' ? 100 : 1, checked: 0 };
-                    syncWithServer(updated);
-                    return updated;
-                }
-                return p;
-            });
-            setProduits(nouveauxProduits);
-            setView('home'); // Retour à l'accueil
-        };
+    const nouveauxProduits = [...produits];
 
+    for (let i = 0; i < nouveauxProduits.length; i++) {
+        let p = nouveauxProduits[i];
+        if (p.checked == 1) {
+            let nouvelleQte = p.typeStock === 'pourcent' ? 100 : 1;
+            let nouvelleDate = p.date;
+
+            // 1. Demander la Quantité (uniquement pour le mode Unité)
+            if (p.typeStock === 'unite') {
+                const qteSaisie = prompt(`Combien de "${p.nom}" as-tu acheté ?`, "1");
+                nouvelleQte = qteSaisie !== null ? Number(qteSaisie) : 1;
+            }
+
+            // 2. Demander la DLC
+            const dateSaisie = prompt(`Nouvelle DLC pour "${p.nom}" ? (Format: AAAA-MM-JJ ou laisse vide)`, p.date);
+            nouvelleDate = dateSaisie !== null ? dateSaisie : p.date;
+
+            // Mise à jour de l'objet
+            const updated = { ...p, stock: nouvelleQte, date: nouvelleDate, checked: 0 };
+            nouveauxProduits[i] = updated;
+            await syncWithServer(updated); // On attend la synchro BDD
+        }
+    }
+
+    setProduits(nouveauxProduits);
+    setView('home');
+    alert("Stock mis à jour !");
+};
         const checkDLC = (dateStr, congele) => {
             if (!dateStr || congele) return { status: 'ok', msg: '' };
             const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
@@ -232,9 +249,16 @@
                                                 syncWithServer(updated);
                                             }} className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
                                             <div>
-                                                <p className={`font-bold text-sm tracking-tight ${p.checked == 1 ? 'line-through opacity-20' : 'text-gray-700'}`}>{p.nom}</p>
-                                                <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">{p.rayon}</p>
-                                            </div>
+                <p className={`font-bold text-sm tracking-tight ${p.checked == 1 ? 'line-through opacity-20' : 'text-gray-700'}`}>
+                    {p.nom}
+                </p>
+                <div className="flex gap-2 items-center">
+                    <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">{p.rayon}</p>
+                    {p.checked != 1 && (
+                        <span className="text-[8px] bg-blue-50 text-blue-500 px-1 rounded font-bold italic">Saisir DLC à l'achat ⌛</span>
+                    )}
+                </div>
+            </div>
                                         </div>
                                         <button onClick={() => {
                                             fetch(`${API_URL}?action=delete_product&id=${p.id}`);
