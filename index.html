@@ -72,6 +72,9 @@
         const [openSections, setOpenSections] = useState({});
         const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
         const [confirmModal, setConfirmModal] = useState({ show: false, produit: null });
+        const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+const [purchaseQueue, setPurchaseQueue] = useState([]);
+const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
 
         useEffect(() => {
             if (isLoggedIn) {
@@ -126,9 +129,9 @@
 };
 
         // --- NOUVELLE FONCTION ACHETER ---
-        const validerAchats = async () => {
-    const cocherAchetes = produits.filter(p => p.checked == 1);
-    if (cocherAchetes.length === 0) return alert("Cochez d'abord les produits achetés !");
+        const validerAchats = () => {
+    const aTraiter = produits.filter(p => p.checked == 1);
+    if (aTraiter.length === 0) return alert("Cochez d'abord les produits achetés !");
 
     const nouveauxProduits = [...produits];
 
@@ -163,11 +166,50 @@
             await syncWithServer(updated); // On attend la synchro BDD
         }
     }
-
-    setProduits(nouveauxProduits);
+setPurchaseQueue(aTraiter);
+    setCurrentPurchaseIdx(0);
+    
+    // On pré-remplit le formulaire pour le premier produit
+    setForm({
+        stock: aTraiter[0].typeStock === 'unite' ? 1 : 100,
+        date: '' // Vide pour le calendrier
+    });
+    setShowPurchaseModal(true);
+            
     setView('home');
     alert("Stock mis à jour !");
 };
+const enregistrerEtapeAchat = async () => {
+    const p = purchaseQueue[currentPurchaseIdx];
+    
+    // On prépare l'objet mis à jour
+    const updated = { 
+        ...p, 
+        stock: form.stock, 
+        date: form.date, // Le calendrier renvoie déjà du AAAA-MM-JJ (parfait pour la BDD)
+        checked: 0 
+    };
+
+    // Mise à jour locale et serveur
+    setProduits(prev => prev.map(item => item.id === p.id ? updated : item));
+    await syncWithServer(updated);
+
+    if (currentPurchaseIdx < purchaseQueue.length - 1) {
+        // On passe au suivant
+        const suivant = purchaseQueue[currentPurchaseIdx + 1];
+        setCurrentPurchaseIdx(prev => prev + 1);
+        setForm({
+            stock: suivant.typeStock === 'unite' ? 1 : 100,
+            date: ''
+        });
+    } else {
+        // C'est fini
+        setShowPurchaseModal(false);
+        setView('home');
+        alert("Stock mis à jour avec succès !");
+    }
+};
+        
         const checkDLC = (dateStr, congele) => {
             if (!dateStr || congele) return { status: 'ok', msg: '' };
             const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
@@ -373,6 +415,52 @@ const formatDateFR = (dateUS) => {
                     className="flex-1 bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg"
                 >
                     Oui
+                </button>
+            </div>
+        </div>
+    </div>
+)}
+                {showPurchaseModal && (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[120] p-6">
+        <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-up border-4 border-green-500">
+            <div className="text-center mb-6">
+                <div className="text-4xl mb-2">🛍️</div>
+                <h2 className="font-black uppercase text-lg italic text-gray-800">
+                    {purchaseQueue[currentPurchaseIdx]?.nom}
+                </h2>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mise à jour du stock</p>
+            </div>
+
+            <div className="space-y-5">
+                {/* Quantité : Seulement si le produit est géré en Unité */}
+                {purchaseQueue[currentPurchaseIdx]?.typeStock === 'unite' && (
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2 italic">Quantité achetée</label>
+                        <input 
+                            type="number" 
+                            className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-green-500 transition-all"
+                            value={form.stock}
+                            onChange={e => setForm({...form, stock: Number(e.target.value)})}
+                        />
+                    </div>
+                )}
+
+                {/* Date : Avec calendrier natif */}
+                <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 ml-2 italic">Nouvelle DLC (Calendrier)</label>
+                    <input 
+                        type="date" 
+                        className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-green-500 transition-all"
+                        value={form.date}
+                        onChange={e => setForm({...form, date: e.target.value})}
+                    />
+                </div>
+
+                <button 
+                    onClick={enregistrerEtapeAchat}
+                    className="w-full bg-green-600 text-white p-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all mt-4"
+                >
+                    {currentPurchaseIdx < purchaseQueue.length - 1 ? "Produit suivant ➔" : "Terminer et ranger ✅"}
                 </button>
             </div>
         </div>
