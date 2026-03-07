@@ -208,12 +208,31 @@ const formatDateFR = (dateUS) => {
     if (parts.length !== 3) return dateUS;
     return `${parts[2]}-${parts[1]}-${parts[0]}`;
 };
+        const handleLogout = () => {
+    if (confirm("Voulez-vous vous déconnecter ?")) {
+        localStorage.removeItem('stock_session');
+        localStorage.removeItem('stock_user');
+        window.location.reload(); // Recharge la page pour revenir au Login
+    }
+};
 
         if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
 
         return (
             <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
                 <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
+                    <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+            {/* Bouton déconnexion discret */}
+            <button onClick={handleLogout} className="text-gray-300 text-xs">🚪</button>
+            <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">
+                MON STOCKAGE
+            </h1>
+        </div>
+        <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">
+            {view === 'home' ? 'Courses' : 'Stock'}
+        </button>
+    </div>
                     <div className="flex justify-between items-center mb-4">
                         <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGE</h1>
                         <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">
