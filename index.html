@@ -8,22 +8,13 @@
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
     <link rel="icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
 
-    <link rel="manifest" href='data:application/manifest+json,{
-        "name": "Mon Stockage",
-        "short_name": "Stock",
-        "start_url": ".",
-        "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#22c55e",
-        "icons": [
-            {
-                "src": "https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true",
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
-            }
-        ]
-    }'>
+    <link rel="manifest" href="manifest.json">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
     
     <title>Mon Stockage</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -48,8 +39,8 @@
     const API_URL = "https://baptisterouxel.fr/stock/api.php";
     const { useState, useEffect } = React;
 
-    const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
-const PASS_SOEUR = "1912"; // Le code de ta soeur
+    //const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
+    //const PASS_SOEUR = "1912"; 
 
     const STRUCTURE = {
         "Alimentaire": { icon: "🧺", rayons: [
@@ -82,19 +73,27 @@ const PASS_SOEUR = "1912"; // Le code de ta soeur
     const Login = ({ onLogin }) => {
         const [pass, setPass] = useState('');
         const [error, setError] = useState(false);
-        const handleSubmit = (e) => {
-    e.preventDefault();
-    if (pass === PASS_BAPTISTE) {
-        localStorage.setItem('stock_user', 'baptiste');
-        onLogin();
-    } else if (pass === PASS_SOEUR) {
-        localStorage.setItem('stock_user', 'soeur');
-        onLogin();
-    } else {
-        setError(true);
-        setPass('');
-    }
-};
+        
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            // On vérifie le pass directement via l'API
+            try {
+                const res = await fetch(`${API_URL}?action=login&pass=${pass}`);
+                const data = await res.json();
+                
+                if (res.ok && data.status === 'success') {
+                    localStorage.setItem('stock_user', data.user);
+                    localStorage.setItem('stock_pass', pass); // Sauvegarde locale du sésame
+                    localStorage.setItem('stock_session', 'active');
+                    onLogin();
+                } else {
+                    setError(true);
+                    setPass('');
+                }
+            } catch (err) {
+                alert("Erreur de connexion au serveur");
+            }
+        };
         return (
             <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
                 <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up border-4 border-white/20">
