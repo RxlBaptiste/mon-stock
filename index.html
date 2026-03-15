@@ -50,6 +50,7 @@
 
     const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
 const PASS_SOEUR = "1912"; // Le code de ta soeur
+        const PASS_PERE = "1234";
 
     const STRUCTURE = {
         "Alimentaire": { icon: "🧺", rayons: [
@@ -89,6 +90,9 @@ const PASS_SOEUR = "1912"; // Le code de ta soeur
         onLogin();
     } else if (pass === PASS_SOEUR) {
         localStorage.setItem('stock_user', 'soeur');
+        onLogin();
+    } else if (pass === PASS_PERE) {
+        localStorage.setItem('stock_user', 'pere');
         onLogin();
     } else {
         setError(true);
