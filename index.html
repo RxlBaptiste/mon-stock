@@ -172,30 +172,47 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
 
     const startScan = () => {
         setScanning(true);
-        Quagga.init({
-            inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#scanner-container') },
-            decoder: { readers: ["ean_reader"] }
-        }, (err) => {
-            if (err) return console.error(err);
-            Quagga.start();
-        });
-
-        Quagga.onDetected(async (data) => {
-            Quagga.stop();
-            setScanning(false);
-            const code = data.codeResult.code;
-            
-            // On cherche le nom sur OpenFoodFacts
-            try {
-                const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                const json = await res.json();
-                if (json.status === 1) {
-                    onDetected(json.product.product_name_fr || json.product.product_name);
-                } else {
-                    alert("Produit inconnu, ajoutez-le à la main.");
+        // On attend que l'élément soit créé dans le DOM
+        setTimeout(() => {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#scanner-container'),
+                    constraints: {
+                        // FORCE LA CAMÉRA ARRIÈRE
+                        facingMode: "environment",
+                        width: { min: 640 },
+                        height: { min: 480 }
+                    },
+                },
+                decoder: { readers: ["ean_reader"] },
+                locate: true // Aide à trouver le code barre plus vite
+            }, (err) => {
+                if (err) {
+                    alert("Erreur caméra : Vérifiez les autorisations");
+                    setScanning(false);
+                    return;
                 }
-            } catch (e) { alert("Erreur réseau"); }
-        });
+                Quagga.start();
+            });
+
+            Quagga.onDetected(async (data) => {
+                Quagga.stop();
+                setScanning(false);
+                const code = data.codeResult.code;
+                
+                try {
+                    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+                    const json = await res.json();
+                    if (json.status === 1) {
+                        onDetected(json.product.product_name_fr || json.product.product_name);
+                    } else {
+                        alert("Produit inconnu (Code: " + code + "), ajoutez-le à la main.");
+                    }
+                } catch (e) { alert("Erreur réseau"); }
+            });
+        }, 300);
     };
 
     return (
@@ -206,10 +223,11 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
                 </button>
             ) : (
                 <div className="relative">
-                    <div id="scanner-container" className="w-full h-64 rounded-2xl overflow-hidden border-4 border-blue-500 shadow-inner bg-black"></div>
-                    <button onClick={() => { Quagga.stop(); setScanning(false); }} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg text-[8px] font-bold">ANNULER</button>
-                    <div className="absolute inset-0 border-2 border-red-500/50 pointer-events-none flex items-center justify-center">
-                        <div className="w-full h-[2px] bg-red-500 animate-pulse"></div>
+                    {/* CSS AJOUTÉ DIRECTEMENT POUR LA VIDÉO */}
+                    <div id="scanner-container" className="w-full h-64 rounded-2xl overflow-hidden border-4 border-blue-500 bg-black [&>video]:w-full [&>video]:h-full [&>video]:object-cover"></div>
+                    <button onClick={() => { Quagga.stop(); setScanning(false); }} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg text-[8px] font-bold z-10">ANNULER</button>
+                    <div className="absolute inset-0 border-2 border-red-500/30 pointer-events-none flex items-center justify-center">
+                        <div className="w-[80%] h-[2px] bg-red-500 shadow-[0_0_10px_red] animate-pulse"></div>
                     </div>
                 </div>
             )}
