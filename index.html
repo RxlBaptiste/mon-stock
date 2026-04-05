@@ -186,8 +186,15 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
                         height: { min: 480 }
                     },
                 },
-                decoder: { readers: ["ean_reader"] },
-                locate: true // Aide à trouver le code barre plus vite
+                decoder: { 
+    readers: [
+        "ean_reader",      // Format standard (13 chiffres)
+        "ean_8_reader",    // Petit format (8 chiffres)
+        "code_128_reader"  // Pour certains autres produits
+    ] 
+},
+locate: true, // Localise le code-barre dans l'image
+halfSample: true // Accélère le traitement sur les vieux téléphones
             }, (err) => {
                 if (err) {
                     alert("Erreur caméra : Vérifiez les autorisations");
@@ -198,20 +205,44 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
             });
 
             Quagga.onDetected(async (data) => {
-                Quagga.stop();
-                setScanning(false);
-                const code = data.codeResult.code;
-                
-                try {
-                    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                    const json = await res.json();
-                    if (json.status === 1) {
-                        onDetected(json.product.product_name_fr || json.product.product_name);
-                    } else {
-                        alert("Produit inconnu (Code: " + code + "), ajoutez-le à la main.");
-                    }
-                } catch (e) { alert("Erreur réseau"); }
-            });
+    Quagga.stop();
+    setScanning(false);
+    const code = data.codeResult.code;
+    
+    try {
+        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+        const json = await res.json();
+        
+        if (json.status === 1) {
+            const p = json.product;
+            const nom = p.product_name_fr || p.product_name;
+            
+            // --- LOGIQUE DE RANGEMENT AUTOMATIQUE ---
+            let zoneAuto = "Alimentaire";
+            let rayonAuto = "Autres";
+
+            // On analyse les tags de catégories pour trouver le bon rayon
+            const tags = (p.categories_tags || []).join(' ').toLowerCase();
+
+            if (tags.includes('fruit') || tags.includes('légume')) rayonAuto = "Fruits et Légumes";
+            else if (tags.includes('viande') || tags.includes('charcuterie')) rayonAuto = "Viande";
+            else if (tags.includes('poisson') || tags.includes('mer')) rayonAuto = "Poisson";
+            else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt')) rayonAuto = "Produits Laitiers";
+            else if (tags.includes('boisson') || tags.includes('jus') || tags.includes('vin')) rayonAuto = "Boissons";
+            else if (tags.includes('surgelé')) rayonAuto = "Surgelés";
+            else if (tags.includes('biscuit') || tags.includes('chocolat') || tags.includes('confiture')) rayonAuto = "Sucré";
+            else if (tags.includes('hygiène') || tags.includes('corps') || tags.includes('savon')) {
+                zoneAuto = "Hygiène";
+                rayonAuto = "Hygiène Corporelle";
+            }
+            // Tu peux ajouter autant de "else if" que tu veux ici !
+
+            onDetected(nom, zoneAuto, rayonAuto);
+        } else {
+            alert("Produit non trouvé. Ajoutez-le manuellement.");
+        }
+    } catch (e) { alert("Erreur de connexion"); }
+});
         }, 300);
     };
 
@@ -235,9 +266,16 @@ const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
     );
 };
 
-const handleBarcodeResult = (nomProduit) => {
-    setForm({ ...form, nom: nomProduit, stock: 1, date: '' });
-    setShowAddModal(true); // Ouvre la modale habituelle pour que tu mettes la DLC
+const handleBarcodeResult = (nom, zone, rayon) => {
+    setForm({ 
+        ...form, 
+        nom: nom, 
+        zone: zone, 
+        rayon: rayon, 
+        stock: 1, 
+        date: '' 
+    });
+    setShowAddModal(true); // Ouvre la modale pré-remplie
 };
 
         const updateStock = (id, delta) => {
