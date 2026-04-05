@@ -186,34 +186,47 @@ const BarcodeScanner = ({ onDetected }) => {
             const json = await res.json();
             
             if (json.status === 1) {
-                const p = json.product;
-                const nom = p.product_name_fr || p.product_name || "Produit inconnu";
-                
-                // --- LOGIQUE DE RANGEMENT AUTOMATIQUE ---
-                let zoneAuto = "Alimentaire";
-                let rayonAuto = "Autres";
-                const tags = (p.categories_tags || []).join(' ').toLowerCase();
+            const p = json.product;
+            const nom = p.product_name_fr || p.product_name || "Produit inconnu";
+            
+            // Valeurs par défaut
+            let zoneAuto = "Alimentaire";
+            let rayonAuto = "Autres";
 
-                if (tags.includes('fruit') || tags.includes('legume')) rayonAuto = "Fruits et Légumes";
-                else if (tags.includes('viande') || tags.includes('charcuterie')) rayonAuto = "Viande";
-                else if (tags.includes('poisson')) rayonAuto = "Poisson";
-                else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt')) rayonAuto = "Produits Laitiers";
-                else if (tags.includes('boisson') || tags.includes('jus')) rayonAuto = "Boissons";
-                else if (tags.includes('surgel')) rayonAuto = "Surgelés";
-                else if (tags.includes('sucre') || tags.includes('biscuit') || tags.includes('chocolat')) rayonAuto = "Sucré";
-                else if (tags.includes('boulangerie') || tags.includes('pain') || tags.includes('biscotte')) rayonAuto = "Boulangerie";
-                else if (tags.includes('hygiene') || tags.includes('savon') || tags.includes('corps')) {
-                    zoneAuto = "Hygiène";
-                    rayonAuto = "Hygiène Corporelle";
-                }
+            // On récupère les étiquettes de catégories du produit
+            const tags = (p.categories_tags || []).join(' ').toLowerCase();
 
-                // On envoie les infos à l'application
-                onDetected(nom, zoneAuto, rayonAuto);
-                
-                // On arrête tout proprement
-                Quagga.stop();
-                setScanning(false);
-            } else {
+            // Système de correspondance avec TES catégories
+            if (tags.includes('fruit') || tags.includes('legume')) {
+                rayonAuto = "Fruits et Légumes";
+            } else if (tags.includes('viande') || tags.includes('charcuterie') || tags.includes('poulet')) {
+                rayonAuto = "Viande";
+            } else if (tags.includes('poisson') || tags.includes('mer')) {
+                rayonAuto = "Poisson";
+            } else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt') || tags.includes('beurre')) {
+                rayonAuto = "Produits Laitiers";
+            } else if (tags.includes('boisson') || tags.includes('eau') || tags.includes('jus') || tags.includes('soda')) {
+                rayonAuto = "Boissons";
+            } else if (tags.includes('surgel')) {
+                rayonAuto = "Surgelés";
+            } else if (tags.includes('biscuits') || tags.includes('chocolat') || tags.includes('sucre') || tags.includes('confiture')) {
+                rayonAuto = "Sucré";
+            } else if (tags.includes('conserves') || tags.includes('pates') || tags.includes('riz') || tags.includes('huile')) {
+                rayonAuto = "Épicerie Salée";
+            } else if (tags.includes('hygiene') || tags.includes('savon') || tags.includes('shampooing') || tags.includes('dentifrice')) {
+                zoneAuto = "Hygiène";
+                rayonAuto = "Hygiène Corporelle";
+            } else if (tags.includes('nettoyage') || tags.includes('lessive') || tags.includes('entretien')) {
+                zoneAuto = "Entretien";
+                rayonAuto = "Produits Ménagers";
+            }
+
+            // On envoie le résultat
+            onDetected(nom, zoneAuto, rayonAuto);
+            
+            Quagga.stop();
+            setScanning(false);
+        } else {
                 // UNE SEULE ALERTE SI NON TROUVÉ
                 alert("Produit inconnu (" + code + ")");
                 // On relance la détection après le clic sur OK
@@ -287,16 +300,20 @@ const BarcodeScanner = ({ onDetected }) => {
     );
 };
 
-const handleBarcodeResult = (nom, zone, rayon) => {
+const handleBarcodeResult = (nom, zoneAuto, rayonAuto) => {
+    // On remplit le formulaire avec ce que l'IA a trouvé
     setForm({ 
         ...form, 
-        nom: nom, 
-        zone: zone, 
-        rayon: rayon, 
+        nom: nom.toUpperCase(), 
+        zone: zoneAuto, 
+        rayon: rayonAuto, 
         stock: 1, 
         date: '' 
     });
-    setShowAddModal(true); // Ouvre la modale pré-remplie
+    
+    // On ouvre ta modale d'ajout classique
+    // Comme ça, tu peux vérifier et modifier la zone/rayon avant de valider
+    setShowAddModal(true); 
 };
 
         const updateStock = (id, delta) => {
