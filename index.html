@@ -242,19 +242,21 @@ onDetected(nom, zoneAuto, rayonAuto);
             Quagga.stop();
             setScanning(false);
         } else {
-                // UNE SEULE ALERTE SI NON TROUVÉ
-                alert("Produit inconnu (" + code + ")");
-                // On relance la détection après le clic sur OK
-                Quagga.start();
-            }
-        } catch (e) {
-            console.error("Erreur API:", e);
-            alert("Erreur de connexion au serveur.");
-            Quagga.start();
-        } finally {
-            // On déverrouille après 2 secondes pour éviter les lectures en boucle
-            setTimeout(() => { isProcessing.current = false; }, 2000);
+            // On désactive tout avant l'alerte
+            Quagga.offDetected(); 
+            alert("Produit inconnu (" + code + ")");
+            // On ferme le scanner pour forcer l'utilisateur à se repositionner proprement
+            Quagga.stop();
+            setScanning(false);
         }
+    } catch (e) {
+        Quagga.offDetected();
+        console.error("Erreur API:", e);
+        alert("Erreur de connexion au serveur.");
+        setScanning(false);
+    } finally {
+        setTimeout(() => { isProcessing.current = false; }, 2000);
+    }
     };
 
     const startScan = () => {
@@ -289,9 +291,10 @@ onDetected(nom, zoneAuto, rayonAuto);
                 // --- LE TEMPS DE POSITIONNEMENT (1.5s) ---
                 // La caméra s'allume mais on n'écoute pas encore le code-barre
                 setTimeout(() => {
+                    Quagga.offDetected(); // NETTOYAGE CRUCIAL
                     Quagga.start();
                     Quagga.onDetected(handleDetection);
-                }, 1500); 
+                }, 1500);
             });
         }, 300);
     };
