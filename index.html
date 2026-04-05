@@ -189,40 +189,55 @@ const BarcodeScanner = ({ onDetected }) => {
             const p = json.product;
             const nom = p.product_name_fr || p.product_name || "Produit inconnu";
             
-            // Valeurs par défaut
-            let zoneAuto = "Alimentaire";
-            let rayonAuto = "Autres";
+            // --- LOGIQUE DE RANGEMENT AUTOMATIQUE ---
+let zoneAuto = "Alimentaire";
+let rayonAuto = "Autres";
 
-            // On récupère les étiquettes de catégories du produit
-            const tags = (p.categories_tags || []).join(' ').toLowerCase();
+const tags = (p.categories_tags || []).join(' ').toLowerCase();
+const nomMin = nom.toLowerCase();
 
-            // Système de correspondance avec TES catégories
-            if (tags.includes('fruit') || tags.includes('legume')) {
-                rayonAuto = "Fruits et Légumes";
-            } else if (tags.includes('viande') || tags.includes('charcuterie') || tags.includes('poulet')) {
-                rayonAuto = "Viande";
-            } else if (tags.includes('poisson') || tags.includes('mer')) {
-                rayonAuto = "Poisson";
-            } else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt') || tags.includes('beurre')) {
-                rayonAuto = "Produits Laitiers";
-            } else if (tags.includes('boisson') || tags.includes('eau') || tags.includes('jus') || tags.includes('soda')) {
-                rayonAuto = "Boissons";
-            } else if (tags.includes('surgel')) {
-                rayonAuto = "Surgelés";
-            } else if (tags.includes('biscuits') || tags.includes('chocolat') || tags.includes('sucre') || tags.includes('confiture')) {
-                rayonAuto = "Sucré";
-            } else if (tags.includes('conserves') || tags.includes('pates') || tags.includes('riz') || tags.includes('huile')) {
-                rayonAuto = "Épicerie Salée";
-            } else if (tags.includes('hygiene') || tags.includes('savon') || tags.includes('shampooing') || tags.includes('dentifrice')) {
-                zoneAuto = "Hygiène";
-                rayonAuto = "Hygiène Corporelle";
-            } else if (tags.includes('nettoyage') || tags.includes('lessive') || tags.includes('entretien')) {
-                zoneAuto = "Entretien";
-                rayonAuto = "Produits Ménagers";
-            }
+// 1. BOISSONS (On checke d'abord le nom et les tags)
+if (tags.includes('boisson') || tags.includes('jus') || tags.includes('nectar') || nomMin.includes('jus') || tags.includes('soda')) {
+    rayonAuto = "Boissons";
+} 
+// 2. PRODUITS LAITIERS (Fromage, yaourt, lait, ricotta...)
+else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt') || tags.includes('lacté') || tags.includes('dairy') || nomMin.includes('ricotta') || nomMin.includes('beurre')) {
+    rayonAuto = "Produits Laitiers";
+} 
+// 3. VIANDE / POISSON / CHARCUTERIE
+else if (tags.includes('viande') || tags.includes('poulet') || tags.includes('charcuterie') || nomMin.includes('jambon') || nomMin.includes('poitrine')) {
+    rayonAuto = "Viande";
+} else if (tags.includes('poisson') || tags.includes('mer') || tags.includes('saumon')) {
+    rayonAuto = "Poisson";
+}
+// 4. SURGELÉS
+else if (tags.includes('surgel') || tags.includes('frozen')) {
+    rayonAuto = "Surgelés";
+}
+// 5. FRUITS ET LÉGUMES
+else if (tags.includes('fruit') || tags.includes('legume')) {
+    rayonAuto = "Fruits et Légumes";
+} 
+// 6. ÉPICERIE SUCRÉE / BOULANGERIE
+else if (tags.includes('biscuit') || tags.includes('chocolat') || tags.includes('confiture') || tags.includes('sucre')) {
+    rayonAuto = "Sucré";
+} else if (tags.includes('pain') || tags.includes('boulangerie') || tags.includes('biscotte')) {
+    rayonAuto = "Boulangerie";
+}
+// 7. ÉPICERIE SALÉE (Pâtes, Riz, Conserves)
+else if (tags.includes('pate') || tags.includes('riz') || tags.includes('conserve') || tags.includes('lentille')) {
+    rayonAuto = "Salé";
+}
+// 8. HYGIÈNE & ENTRETIEN
+else if (tags.includes('hygiene') || tags.includes('savon') || tags.includes('dent')) {
+    zoneAuto = "Hygiène";
+    rayonAuto = "Hygiène Corporelle";
+} else if (tags.includes('entretien') || tags.includes('ménager') || tags.includes('lessive')) {
+    zoneAuto = "Hygiène";
+    rayonAuto = "Produits Ménagers";
+}
 
-            // On envoie le résultat
-            onDetected(nom, zoneAuto, rayonAuto);
+onDetected(nom, zoneAuto, rayonAuto);
             
             Quagga.stop();
             setScanning(false);
