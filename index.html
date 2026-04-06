@@ -284,52 +284,84 @@
                     <main className="p-4">
                         {/* VUE TICKET DE CAISSE */}
                         {view === 'receipt' && (
-                            <div className="animate-up space-y-6">
-                                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 text-center">
-                                    <h2 className="font-black uppercase text-xs mb-4 text-gray-400">Scanner un ticket de caisse</h2>
-                                    <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="receipt-upload" className="hidden" />
-                                    <label htmlFor="receipt-upload" className="inline-block bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer shadow-lg active:scale-95 transition-all">
-                                        📷 Sélectionner Photo / PDF
-                                    </label>
-                                    {loading && <p className="mt-4 text-[10px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
-                                </div>
+    <div className="animate-up space-y-6 pb-20">
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 text-center">
+            <h2 className="font-black uppercase text-[10px] mb-4 text-gray-400 tracking-widest">Scanner un ticket de caisse</h2>
+            <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="receipt-upload" className="hidden" />
+            <label htmlFor="receipt-upload" className="inline-block bg-blue-600 text-white px-10 py-5 rounded-2xl font-black uppercase text-xs cursor-pointer shadow-xl active:scale-95 transition-all">
+                📷 PHOTO OU PDF
+            </label>
+            {loading && <p className="mt-4 text-[10px] font-black text-blue-500 animate-pulse uppercase">Analyse du ticket...</p>}
+        </div>
 
-                                {receiptItems.length > 0 && (
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center px-2">
-                                            <span className="text-[10px] font-black uppercase text-gray-400">Articles trouvés ({receiptItems.length})</span>
-                                            <span className="text-[10px] font-black text-blue-600">{magasinInfo.nom}</span>
-                                        </div>
-                                        {receiptItems.map((item, idx) => (
-                                            <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
-                                                <div className="flex justify-between items-start">
-                                                    <span className="font-bold text-xs uppercase text-gray-700 leading-tight w-2/3">{item.nom}</span>
-                                                    <span className="bg-gray-100 px-2 py-1 rounded-lg font-black text-[10px]">x{item.qte}</span>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[10px] font-bold outline-none border border-gray-100" 
-                                                        onChange={(e) => {
-                                                            const newItems = [...receiptItems];
-                                                            newItems[idx].dlc = e.target.value;
-                                                            setReceiptItems(newItems);
-                                                        }} />
-                                                    <button 
-                                                        onClick={() => {
-                                                            const newItems = [...receiptItems];
-                                                            newItems[idx].congele = !newItems[idx].congele;
-                                                            setReceiptItems(newItems);
-                                                        }}
-                                                        className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500' : 'bg-gray-100'}`}>❄️</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <button onClick={saveReceiptToStock} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase shadow-xl tracking-widest text-sm">
-                                            🚀 Ajouter tout au stock
-                                        </button>
-                                    </div>
-                                )}
+        {receiptItems.length > 0 && (
+            <div className="space-y-3">
+                <div className="flex justify-between items-center px-4">
+                    <span className="text-[10px] font-black uppercase text-gray-400">Vérification ({receiptItems.length} articles)</span>
+                    <span className={`text-[10px] font-black px-3 py-1 rounded-full text-white ${magasinInfo.color === 'orange' ? 'bg-orange-500' : 'bg-red-500'}`}>{magasinInfo.nom}</span>
+                </div>
+                
+                {receiptItems.map((item, idx) => (
+                    <div key={idx} className="bg-white p-5 rounded-[2rem] shadow-md border border-gray-50 space-y-4">
+                        <div className="flex justify-between items-start gap-4">
+                            <span className="font-black text-sm uppercase text-gray-800 leading-tight flex-1">{item.nom}</span>
+                            
+                            {/* SÉLECTEUR DE QUANTITÉ POUR LES PACKS */}
+                            <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-2">
+                                <button 
+                                    onClick={() => {
+                                        const newItems = [...receiptItems];
+                                        newItems[idx].qte = Math.max(1, newItems[idx].qte - 1);
+                                        setReceiptItems(newItems);
+                                    }}
+                                    className="w-8 h-8 bg-white rounded-lg font-bold shadow-sm active:scale-90">-</button>
+                                <span className="font-black text-xs px-1">x{item.qte}</span>
+                                <button 
+                                    onClick={() => {
+                                        const newItems = [...receiptItems];
+                                        newItems[idx].qte = newItems[idx].qte + 1;
+                                        setReceiptItems(newItems);
+                                    }}
+                                    className="w-8 h-8 bg-white rounded-lg font-bold shadow-sm active:scale-90">+</button>
                             </div>
-                        )}
+                        </div>
+
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <p className="text-[8px] font-black uppercase text-gray-300 ml-2 mb-1 italic">DLC du produit</p>
+                                <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-[10px] font-bold outline-none border border-gray-100 focus:ring-1 focus:ring-blue-400" 
+                                    value={item.dlc}
+                                    onChange={(e) => {
+                                        const newItems = [...receiptItems];
+                                        newItems[idx].dlc = e.target.value;
+                                        setReceiptItems(newItems);
+                                    }} />
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <p className="text-[8px] font-black uppercase text-gray-300 mb-1 italic">Congelo</p>
+                                <button 
+                                    onClick={() => {
+                                        const newItems = [...receiptItems];
+                                        newItems[idx].congele = !newItems[idx].congele;
+                                        setReceiptItems(newItems);
+                                    }}
+                                    className={`w-12 h-11 rounded-xl text-xl flex items-center justify-center transition-all ${item.congele ? 'bg-blue-500 shadow-inner' : 'bg-gray-100'}`}>
+                                    {item.congele ? '❄️' : '🔘'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                
+                <div className="p-4">
+                    <button onClick={saveReceiptToStock} className="w-full bg-green-600 text-white p-6 rounded-[2.5rem] font-black uppercase shadow-2xl tracking-widest text-sm active:scale-95 transition-all">
+                        🚀 Valider et Ranger au stock
+                    </button>
+                </div>
+            </div>
+        )}
+    </div>
+)}
 
                         {/* VUE STOCK (HOME) */}
                         {view === 'home' && (
