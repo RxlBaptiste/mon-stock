@@ -320,40 +320,60 @@
 
                     {/* MODALE AJOUT MANUEL */}
                     {showAddModal && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
-                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
-                                <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl">
-                                    <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Unités</button>
-                                    <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
-                                        {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
-                                    </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
-                                        {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mb-6">
-                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
-                                </div>
-                                <div className="space-y-3 mb-8">
-                                    <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
-                                        <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
-                                        <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 p-4 bg-red-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
-                                        <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm" />
-                                        <span className="text-[10px] font-black text-red-700 uppercase italic">Direct aux courses 🛒</span>
-                                    </label>
-                                </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',directShopping:false,congele:false}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
-                            </div>
-                        </div>
-                    )}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
+        <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
+            <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
+            
+            <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+            
+            <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl">
+                <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-300'}`}>Unités</button>
+                <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-4">
+                <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                    {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+                <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                    {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
+                </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-6">
+                <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+            </div>
+
+            <div className="space-y-3 mb-8">
+                <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
+                    <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
+                </label>
+                <label className="flex items-center gap-3 p-4 bg-red-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                    <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm" />
+                    <span className="text-[10px] font-black text-red-700 uppercase italic">Direct aux courses 🛒</span>
+                </label>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <button onClick={async () => { 
+                    const n = {...form, id: Date.now(), stock: form.directShopping ? 0 : Number(form.stock), congele: form.congele?1:0, checked: 0}; 
+                    setProduits([n, ...produits]); await syncWithServer(n); setShowAddModal(false); 
+                    setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
+                }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all tracking-[0.2em]">Enregistrer ✅</button>
+                
+                {/* BOUTON ANNULER BIEN PROPRE */}
+                <button onClick={() => {
+                    setShowAddModal(false);
+                    setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
+                }} className="w-full text-gray-300 text-[10px] font-black uppercase py-2 active:text-red-400 transition-colors tracking-widest">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+)}
 
                     {/* MODALE SUPPRESSION DESIGN */}
                     {confirmDelete.show && (
