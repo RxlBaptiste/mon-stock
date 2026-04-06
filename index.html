@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#22c55e">
-    <title>Mon Stockage Pro</title>
-
+    <title>Mon Stockage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -13,23 +12,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
-
     <style>
-        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f3f4f6; }
+        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
         .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-up { animation: slideUp 0.3s ease-out; }
     </style>
 </head>
-<body>
+<body class="bg-gray-100">
     <div id="root"></div>
 
     <script type="text/babel">
         const API_URL = "https://baptisterouxel.fr/stock/api.php";
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
         const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
@@ -38,19 +36,16 @@
 
         const STRUCTURE = {
             "Alimentaire": { icon: "🧺", rayons: [
-                { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, 
-                { id: "Poisson", icon: "🐟" }, { id: "Produits Laitiers", icon: "🥛" }, 
-                { id: "Salé", icon: "🧂" }, { id: "Sucré", icon: "🍪" }, 
-                { id: "Condiments", icon: "🍯" }, { id: "Boissons", icon: "🍷" }, 
-                { id: "Surgelés", icon: "❄️" }, { id: "Boulangerie", icon: "🥖" }
+                { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
+                { id: "Produits Laitiers", icon: "🥛" }, { id: "Salé", icon: "🧂" }, { id: "Sucré", icon: "🍪" }, 
+                { id: "Condiments", icon: "🍯" }, { id: "Boissons", icon: "🍷" }, { id: "Surgelés", icon: "❄️" }, { id: "Boulangerie", icon: "🥖" }
             ]},
             "Hygiène": { icon: "✨", rayons: [
                 { id: "Hygiène Corporelle", icon: "🧼" }, { id: "Hygiène Dentaire", icon: "🪥" }, 
                 { id: "Produits Ménagers", icon: "🧹" }, { id: "Papier", icon: "🧻" }, { id: "Lessive", icon: "🧺" }
             ]},
             "Divers": { icon: "📦", rayons: [
-                { id: "Pharmacie", icon: "🩹" }, { id: "Animaux", icon: "🐾" },
-                { id: "Bricolage", icon: "🛠️" }, { id: "Autres", icon: "🌀" }
+                { id: "Pharmacie", icon: "🩹" }, { id: "Animaux", icon: "🐾" }, { id: "Bricolage", icon: "🛠️" }, { id: "Autres", icon: "🌀" }
             ]}
         };
 
@@ -59,17 +54,16 @@
             const [error, setError] = useState(false);
             const handleSubmit = (e) => {
                 e.preventDefault();
-                if ([PASS_BAPTISTE, PASS_SOEUR, PASS_PERE].includes(pass)) {
-                    localStorage.setItem('stock_user', pass === PASS_BAPTISTE ? 'baptiste' : (pass === PASS_SOEUR ? 'soeur' : 'pere'));
-                    onLogin();
-                } else { setError(true); setPass(''); }
+                const users = { [PASS_BAPTISTE]: 'baptiste', [PASS_SOEUR]: 'soeur', [PASS_PERE]: 'pere' };
+                if (users[pass]) { localStorage.setItem('stock_user', users[pass]); onLogin(); }
+                else { setError(true); setPass(''); }
             };
             return (
                 <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6 text-center">
                     <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl animate-up">
-                        <h2 className="font-black uppercase text-gray-800 mb-8 italic">Mon Stockage</h2>
+                        <h2 className="font-black uppercase text-gray-800 mb-8 italic">Accès Privé</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <input type="password" inputMode="numeric" placeholder="Code..." className={`w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} />
+                            <input type="password" inputMode="numeric" placeholder="Mot de passe..." className={`w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} />
                             <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all">Connexion</button>
                         </form>
                     </div>
@@ -80,7 +74,7 @@
         const App = () => {
             const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
             const [produits, setProduits] = useState([]);
-            const [view, setView] = useState('home'); // home, shopping, receipt
+            const [view, setView] = useState('home'); 
             const [loading, setLoading] = useState(false);
             const [showAddModal, setShowAddModal] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
@@ -88,33 +82,23 @@
             const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
             
             const [receiptItems, setReceiptItems] = useState([]);
-            const [magasinInfo, setMagasinInfo] = useState({ nom: "Scanner Pro", color: "blue" });
-
             const currentUser = localStorage.getItem('stock_user') || 'baptiste';
-            const fuse = useMemo(() => new Fuse([], { threshold: 0.4 }), []);
 
             useEffect(() => {
                 if (isLoggedIn) {
                     fetch(`${API_URL}?action=get_stock&user=${currentUser}`)
                         .then(res => res.json())
-                        .then(data => data && Array.isArray(data) ? setProduits(data) : setProduits([]))
+                        .then(data => setProduits(Array.isArray(data) ? data : []))
                         .catch(() => setProduits([]));
                 }
             }, [isLoggedIn, currentUser]);
 
-            const syncWithServer = async (produit) => {
-                try {
-                    await fetch(`${API_URL}?action=save_product&user=${currentUser}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(produit)
-                    });
-                } catch (err) { console.error(err); }
+            const syncWithServer = async (p) => {
+                try { await fetch(`${API_URL}?action=save_product&user=${currentUser}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }); }
+                catch (err) { console.error(err); }
             };
 
-            const handleLoginSuccess = () => { localStorage.setItem('stock_session', 'active'); setIsLoggedIn(true); };
-
-            // --- SCANNER TICKET ---
+            // --- LOGIQUE TICKET ---
             const convertPdfToImage = async (file) => {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -131,93 +115,85 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 setLoading(true);
-                setReceiptItems([]);
-
                 try {
                     let source = file;
                     if (file.type === "application/pdf") source = await convertPdfToImage(file);
-
                     const worker = await Tesseract.createWorker("fra");
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
-                    const lText = text.toUpperCase();
-
-                    if (lText.includes("LECLERC")) setMagasinInfo({ nom: "E.Leclerc", color: "orange" });
-                    else if (lText.includes("HYPER U") || lText.includes("VENTE")) setMagasinInfo({ nom: "Hyper U", color: "red" });
-
+                    
                     const lignes = text.split("\n");
                     const res = [];
-                    let stopLecture = false;
+                    let stop = false;
 
-                    const nettoyerNom = (nom) => {
-                        const firstDigit = nom.search(/\d/);
-                        let propre = firstDigit !== -1 ? nom.substring(0, firstDigit) : nom;
-                        propre = propre.replace(/[*_]/g, "").trim();
-                        while (propre.endsWith(".") || propre.endsWith(",")) propre = propre.slice(0, -1).trim();
-                        return propre;
+                    const nettoyer = (n) => {
+                        const firstDigit = n.search(/\d/);
+                        let p = firstDigit !== -1 ? n.substring(0, firstDigit) : n;
+                        p = p.replace(/[*_]/g, "").trim();
+                        while (p.endsWith(".") || p.endsWith(",")) p = p.slice(0, -1).trim();
+                        return p;
                     };
 
                     lignes.forEach((ligne, index) => {
-                        if (stopLecture) return;
+                        if (stop) return;
                         let l = ligne.trim().toUpperCase();
                         if (l.length < 3) return;
-                        if (l.includes("TOTAL") || l.includes("RESTE A PAYER") || l.includes("NOMBRE DE LIGNES")) { stopLecture = true; return; }
+                        if (l.includes("TOTAL") || l.includes("RESTE A PAYER")) { stop = true; return; }
 
-                        const regexPrixFin = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const matchPrix = l.match(regexPrixFin);
+                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                        const matchPrix = l.match(regexPrix);
                         const regexMulti = /^(\d+)\s*[X*x]\s*[\d,.]+/;
                         const regexPesee = /KG\s*[X*x]\s*[\d,.]+/;
-                        const matchCalcul = l.match(regexMulti) || l.match(regexPesee);
 
-                        if (matchCalcul) {
+                        if (l.match(regexMulti) || l.match(regexPesee)) {
                             const qte = l.match(regexMulti) ? parseInt(l.match(regexMulti)[1]) : 1;
                             for (let i = 1; i <= 4; i++) {
-                                let nomCandidat = lignes[index - i] ? lignes[index - i].trim().toUpperCase() : "";
-                                if (nomCandidat.length > 2 && !nomCandidat.includes("PESÉE") && !nomCandidat.match(regexPrixFin)) {
-                                    const nomFinal = nettoyerNom(nomCandidat);
-                                    if (nomFinal.length > 2) {
-                                        const exist = produits.find(p => p.nom.toUpperCase() === nomFinal);
-                                        res.push({ nom: nomFinal, qte: qte, dlc: '', congele: false, zone: exist ? exist.zone : 'Alimentaire', rayon: exist ? exist.rayon : 'Autres' });
+                                let nomC = lignes[index-i]?.trim().toUpperCase() || "";
+                                if (nomC.length > 2 && !nomC.includes("PESÉE") && !nomC.match(regexPrix)) {
+                                    const nF = nettoyer(nomC);
+                                    if (nF.length > 2) {
+                                        const ex = produits.find(p => p.nom.toUpperCase() === nF);
+                                        res.push({ nom: nF, qte, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres' });
                                         break;
                                     }
                                 }
                             }
                         } else if (matchPrix) {
-                            let nomBrut = l.replace(regexPrixFin, "").trim();
-                            const nomFinal = nettoyerNom(nomBrut);
-                            if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
-                                const exist = produits.find(p => p.nom.toUpperCase() === nomFinal);
-                                res.push({ nom: nomFinal, qte: 1, dlc: '', congele: false, zone: exist ? exist.zone : 'Alimentaire', rayon: exist ? exist.rayon : 'Autres' });
+                            let nB = l.replace(regexPrix, "").trim();
+                            const nF = nettoyer(nB);
+                            if (nF.length > 2 && !res.some(p => p.nom === nF)) {
+                                const ex = produits.find(p => p.nom.toUpperCase() === nF);
+                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres' });
                             }
                         }
                     });
-
                     setReceiptItems(res);
                     await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
             };
 
-            const saveReceiptToStock = async () => {
+            const saveReceipt = async () => {
                 setLoading(true);
                 for (const item of receiptItems) {
-                    const nouveau = { id: Date.now() + Math.random(), nom: item.nom, zone: item.zone, rayon: item.rayon, typeStock: 'unite', stock: item.qte, date: item.dlc, congele: item.congele ? 1 : 0, checked: 0 };
-                    await syncWithServer(nouveau);
+                    const n = { id: Date.now() + Math.random(), nom: item.nom, zone: item.zone, rayon: item.rayon, typeStock: 'unite', stock: item.qte, date: item.dlc, congele: item.congele ? 1 : 0, checked: 0 };
+                    await syncWithServer(n);
                 }
                 window.location.reload();
             };
 
+            // --- FONCTIONS STOCK ---
             const updateStock = (id, delta) => {
-                const nouveauxProduits = produits.map(p => {
+                const newP = produits.map(p => {
                     if (p.id !== id) return p;
                     let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
-                    if (next <= 0) { 
-                        if(confirm(`Ajouter ${p.nom} à la liste ?`)) { const up = {...p, stock: 0}; syncWithServer(up); return up; }
+                    if (next <= 0) {
+                        if (confirm(`Mettre ${p.nom} en liste de courses ?`)) { const u = {...p, stock: 0}; syncWithServer(u); return u; }
                         else { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); return null; }
                     }
-                    const updated = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
-                    syncWithServer(updated); return updated;
+                    const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
+                    syncWithServer(u); return u;
                 }).filter(p => p !== null);
-                setProduits(nouveauxProduits);
+                setProduits(newP);
             };
 
             const checkDLC = (dateStr, congele) => {
@@ -228,7 +204,7 @@
                 return { status: 'ok', msg: '' };
             };
 
-            if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
+            if (!isLoggedIn) return <Login onLogin={() => { localStorage.setItem('stock_session', 'active'); setIsLoggedIn(true); }} />;
 
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-32">
@@ -236,8 +212,8 @@
                         <div className="flex justify-between items-center mb-4">
                             <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
                             <div className="flex gap-2">
-                                <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">🧾 Ticket</button>
-                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">
+                                <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase tracking-tighter shadow-sm">🧾 Ticket</button>
+                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">
                                     {view === 'home' ? 'Courses' : 'Stock'}
                                 </button>
                             </div>
@@ -248,19 +224,19 @@
                     </header>
 
                     <main className="p-4">
-                        {/* VUE TICKET */}
+                        {/* VUE TICKET (Vérification et Rangement) */}
                         {view === 'receipt' && (
                             <div className="animate-up space-y-4">
                                 <div className="bg-white p-8 rounded-[2rem] text-center border-2 border-dashed border-gray-200">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
-                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block">📷 PHOTO / PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse...</p>}
+                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer shadow-lg active:scale-95 transition-all">📷 PHOTO OU PDF</label>
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse du ticket...</p>}
                                 </div>
 
                                 {receiptItems.map((item, idx) => (
-                                    <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
+                                    <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-50 space-y-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="font-black text-xs uppercase text-gray-700 leading-tight">{item.nom}</span>
+                                            <span className="font-black text-xs uppercase text-gray-700 leading-tight w-2/3">{item.nom}</span>
                                             <div className="flex items-center bg-gray-100 rounded-lg p-1">
                                                 <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
                                                 <span className="px-2 font-black text-xs">x{item.qte}</span>
@@ -277,26 +253,26 @@
                                         </div>
                                         <div className="flex gap-2">
                                             <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.dlc} onChange={(e) => { const n = [...receiptItems]; n[idx].dlc = e.target.value; setReceiptItems(n); }} />
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl ${item.congele ? 'bg-blue-500' : 'bg-gray-100'}`}>❄️</button>
+                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500' : 'bg-gray-100'}`}>❄️</button>
                                         </div>
                                     </div>
                                 ))}
-                                {receiptItems.length > 0 && <button onClick={saveReceiptToStock} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase text-xs tracking-widest">Ranger au stock 🚀</button>}
+                                {receiptItems.length > 0 && <button onClick={saveReceipt} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-xl">Ranger au stock 🚀</button>}
                             </div>
                         )}
 
-                        {/* VUE STOCK (REPLIABLE) */}
+                        {/* VUE STOCK (TON CODE D'ORIGINE REPLIABLE) */}
                         {view === 'home' && Object.keys(STRUCTURE).map(zone => {
-                            const zoneItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
-                            if (zoneItems.length === 0) return null;
+                            const zItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
+                            if (zItems.length === 0) return null;
                             return (
                                 <div key={zone} className="mb-3">
-                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500">
+                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-wider">
                                         <span>{STRUCTURE[zone].icon} {zone}</span>
-                                        <span>{openSections[zone] ? '▲' : '▼'}</span>
+                                        <span className="opacity-30">{openSections[zone] ? '▲' : '▼'}</span>
                                     </button>
                                     {openSections[zone] && STRUCTURE[zone].rayons.map(ray => {
-                                        const rItems = zoneItems.filter(p => p.rayon === ray.id);
+                                        const rItems = zItems.filter(p => p.rayon === ray.id);
                                         if (rItems.length === 0) return null;
                                         return (
                                             <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2">
@@ -308,15 +284,23 @@
                                                     const dlc = checkDLC(p.date, p.congele == 1);
                                                     return (
                                                         <div key={p.id} className={`p-4 flex justify-between items-center border-t border-gray-50 ${dlc.status === 'warning' ? 'warning-dlc' : ''}`}>
-                                                            <div>
-                                                                <p className="font-bold text-sm text-gray-800 uppercase">{p.nom}</p>
-                                                                <p className="text-[9px] text-gray-400 italic">{p.date ? (dlc.status === 'expired' ? 'PÉRIMÉ' : p.date) : 'SANS DLC'} {p.congele == 1 ? '❄️' : ''}</p>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-sm text-gray-800 uppercase leading-tight">{p.nom}</span>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <span className="text-[9px] text-gray-400 italic">{p.date ? (dlc.status === 'expired' ? '🔴 PÉRIMÉ' : '⌛ '+p.date) : '♻️ Sans date'}</span>
+                                                                    {p.congele == 1 && <span className="text-[9px]">❄️</span>}
+                                                                </div>
                                                             </div>
                                                             <div className="flex items-center gap-3">
-                                                                <span className="text-[9px] font-black bg-gray-100 px-2 py-1 rounded-lg">x{p.stock}</span>
-                                                                <div className="flex gap-1">
-                                                                    <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-gray-50 rounded-lg font-bold shadow-sm">-</button>
-                                                                    <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-gray-50 rounded-lg font-bold shadow-sm">+</button>
+                                                                <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">
+                                                                    {p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}
+                                                                </span>
+                                                                <div className="flex gap-2">
+                                                                    {/* BOUTON CONGÉLATION DANS LE STOCK */}
+                                                                    <button onClick={() => { const u = {...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} 
+                                                                            className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center border ${p.congele == 1 ? 'bg-blue-500 text-white border-blue-600 shadow-inner' : 'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
+                                                                    <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">-</button>
+                                                                    <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">+</button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -334,12 +318,12 @@
                             <div className="bg-white rounded-[2rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
                                 {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-12 text-center text-gray-300 italic text-xs">Liste vide</p> :
                                     produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-4 px-6">
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6">
                                             <div className="flex items-center gap-4">
                                                 <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" />
-                                                <div><p className="font-bold text-sm text-gray-700">{p.nom}</p><p className="text-[8px] font-black uppercase text-gray-300">{p.rayon}</p></div>
+                                                <div><p className="font-bold text-sm text-gray-700 uppercase">{p.nom}</p><p className="text-[8px] font-black uppercase text-gray-300">{p.rayon}</p></div>
                                             </div>
-                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200">✕</button>
+                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 p-2">✕</button>
                                         </div>
                                     ))
                                 }
@@ -350,30 +334,34 @@
                     {/* MODALE AJOUT MANUEL */}
                     {showAddModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up">
-                                <input type="text" placeholder="NOM..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
+                                <input type="text" placeholder="NOM..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
                                 <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
                                         {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                     </select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mb-6">
-                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                    <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
                                 </div>
-                                <button onClick={() => { const n = {...form, id: Date.now(), congele: form.congele?1:0, checked: 0}; setProduits([n, ...produits]); syncWithServer(n); setShowAddModal(false); }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase text-xs">ENREGISTRER</button>
-                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[9px] font-black uppercase mt-4">ANNULER</button>
+                                <label className="flex items-center gap-3 mb-6 p-4 bg-blue-50/50 rounded-2xl cursor-pointer">
+                                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
+                                    <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
+                                </label>
+                                <button onClick={() => { const n = {...form, id: Date.now(), congele: form.congele?1:0, checked: 0}; setProduits([n, ...produits]); syncWithServer(n); setShowAddModal(false); setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false }); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[9px] font-black uppercase mt-4 text-center">Annuler</button>
                             </div>
                         </div>
                     )}
 
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40">
-                        <button onClick={() => setView('home')} className={`p-4 transition-all ${view === 'home' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🏠</button>
+                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
+                        <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view === 'home' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🏠</button>
                         <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
-                        <button onClick={() => setView('shopping')} className={`p-4 transition-all ${view === 'shopping' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🛒</button>
+                        <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view === 'shopping' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🛒</button>
                     </nav>
                 </div>
             );
