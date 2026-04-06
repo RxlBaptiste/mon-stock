@@ -82,6 +82,7 @@
             const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
             
             const [receiptItems, setReceiptItems] = useState([]);
+            const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
             useEffect(() => {
@@ -180,7 +181,23 @@
                 }
                 window.location.reload();
             };
-
+const updateStock = (id, delta) => {
+    const newP = produits.map(p => {
+        if (p.id !== id) return p;
+        let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
+        
+        if (next <= 0) {
+            // On ouvre notre modale personnalisée au lieu du confirm()
+            setConfirmDelete({ show: true, produit: p });
+            return p; 
+        }
+        
+        const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
+        syncWithServer(u); 
+        return u;
+    });
+    setProduits(newP);
+};
             // --- FONCTIONS STOCK ---
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
@@ -356,6 +373,55 @@
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[9px] font-black uppercase mt-4 text-center">Annuler</button>
                             </div>
                         </div>
+                    {/* MODALE DE SUPPRESSION DESIGN */}
+{confirmDelete.show && (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6">
+        <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up text-center border-4 border-green-500">
+            <div className="text-4xl mb-4">🛒</div>
+            <h3 className="font-black uppercase text-sm mb-2 text-gray-800 tracking-tight">Stock épuisé !</h3>
+            <p className="text-gray-500 text-xs mb-8 leading-relaxed">
+                Voulez-vous ajouter <span className="text-green-600 font-bold">{confirmDelete.produit?.nom}</span> à votre liste de courses ?
+            </p>
+            
+            <div className="flex flex-col gap-3">
+                {/* BOUTON OUI : Met le stock à 0 et l'envoie en courses */}
+                <button 
+                    onClick={() => {
+                        const p = confirmDelete.produit;
+                        const u = {...p, stock: 0};
+                        setProduits(produits.map(i => i.id === p.id ? u : i));
+                        syncWithServer(u);
+                        setConfirmDelete({ show: false, produit: null });
+                    }}
+                    className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all tracking-widest"
+                >
+                    Oui, ajouter aux courses
+                </button>
+
+                {/* BOUTON NON : Supprime définitivement */}
+                <button 
+                    onClick={() => {
+                        const p = confirmDelete.produit;
+                        fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
+                        setProduits(produits.filter(i => i.id !== p.id));
+                        setConfirmDelete({ show: false, produit: null });
+                    }}
+                    className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all"
+                >
+                    Non, supprimer le produit
+                </button>
+                
+                {/* BOUTON ANNULER : Ne fait rien */}
+                <button 
+                    onClick={() => setConfirmDelete({ show: false, produit: null })}
+                    className="text-[9px] font-black text-gray-300 uppercase mt-2 tracking-widest"
+                >
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+)}
                     )}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
