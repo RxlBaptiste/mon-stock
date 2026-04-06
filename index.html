@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#22c55e">
-    <title>Mon Stockage</title>
+    <title>Mon Stockage Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f3f4f6; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
         .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
@@ -20,13 +20,17 @@
         .animate-up { animation: slideUp 0.3s ease-out; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
         const API_URL = "https://baptisterouxel.fr/stock/api.php";
         const { useState, useEffect, useMemo } = React;
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+
+        const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
+        const PASS_SOEUR = "1912";
+        const PASS_PERE = "5678";
 
         const STRUCTURE = {
             "Alimentaire": { icon: "🧺", rayons: [
@@ -43,6 +47,28 @@
             ]}
         };
 
+        const AUTO_MAPPING = {
+            "YAOURT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
+            "LAIT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
+            "FROMAGE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
+            "BEURRE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
+            "CREME": { zone: "Alimentaire", rayon: "Produits Laitiers" },
+            "POMME": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+            "BANANE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+            "TOMATE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+            "POULET": { zone: "Alimentaire", rayon: "Viande" },
+            "STEAK": { zone: "Alimentaire", rayon: "Viande" },
+            "JAMBON": { zone: "Alimentaire", rayon: "Viande" },
+            "SAUMON": { zone: "Alimentaire", rayon: "Poisson" },
+            "EAU": { zone: "Alimentaire", rayon: "Boissons" },
+            "JUS": { zone: "Alimentaire", rayon: "Boissons" },
+            "PAIN": { zone: "Alimentaire", rayon: "Boulangerie" },
+            "BAGUETTE": { zone: "Alimentaire", rayon: "Boulangerie" },
+            "BISCOTTE": { zone: "Alimentaire", rayon: "Boulangerie" },
+            "LESSIVE": { zone: "Hygiène", rayon: "Lessive" },
+            "SOPALIN": { zone: "Hygiène", rayon: "Papier" }
+        };
+
         const App = () => {
             const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
             const [produits, setProduits] = useState([]);
@@ -52,9 +78,9 @@
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
             const [receiptItems, setReceiptItems] = useState([]);
-            
+            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
+
             const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
             useEffect(() => {
@@ -71,7 +97,13 @@
                 catch (err) { console.error(err); }
             };
 
-            // --- SCANNER TICKET ---
+            const detectCategory = (nom) => {
+                const n = nom.toUpperCase();
+                for (const [k, v] of Object.entries(AUTO_MAPPING)) { if (n.includes(k)) return v; }
+                const ex = produits.find(p => p.nom.toUpperCase() === n);
+                return ex ? { zone: ex.zone, rayon: ex.rayon } : { zone: "Alimentaire", rayon: "Autres" };
+            };
+
             const convertPdfToImage = async (file) => {
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -99,8 +131,8 @@
                     let stop = false;
 
                     const nettoyer = (n) => {
-                        const firstDigit = n.search(/\d/);
-                        let p = firstDigit !== -1 ? n.substring(0, firstDigit) : n;
+                        const d = n.search(/\d/);
+                        let p = d !== -1 ? n.substring(0, d) : n;
                         p = p.replace(/[*_]/g, "").trim();
                         while (p.endsWith(".") || p.endsWith(",")) p = p.slice(0, -1).trim();
                         return p;
@@ -124,8 +156,8 @@
                                 if (nomC.length > 2 && !nomC.includes("PESÉE") && !nomC.match(regexPrix)) {
                                     const nF = nettoyer(nomC);
                                     if (nF.length > 2) {
-                                        const ex = produits.find(p => p.nom.toUpperCase() === nF);
-                                        res.push({ nom: nF, qte, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres', typeStock: ex?.typeStock || 'unite' });
+                                        const cat = detectCategory(nF);
+                                        res.push({ nom: nF, qte, dlc: '', congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: 'unite' });
                                         break;
                                     }
                                 }
@@ -134,23 +166,14 @@
                             let nB = l.replace(regexPrix, "").trim();
                             const nF = nettoyer(nB);
                             if (nF.length > 2 && !res.some(p => p.nom === nF)) {
-                                const ex = produits.find(p => p.nom.toUpperCase() === nF);
-                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres', typeStock: ex?.typeStock || 'unite' });
+                                const cat = detectCategory(nF);
+                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: 'unite' });
                             }
                         }
                     });
                     setReceiptItems(res);
                     await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
-            };
-
-            const saveReceipt = async () => {
-                setLoading(true);
-                for (const item of receiptItems) {
-                    const n = { id: Date.now() + Math.random(), nom: item.nom, zone: item.zone, rayon: item.rayon, typeStock: item.typeStock, stock: item.typeStock === 'pourcent' ? 100 : item.qte, date: item.dlc, congele: item.congele ? 1 : 0, checked: 0 };
-                    await syncWithServer(n);
-                }
-                window.location.reload();
             };
 
             const updateStock = (id, delta) => {
@@ -164,7 +187,17 @@
                 setProduits(newP);
             };
 
-            if (!isLoggedIn) return <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl"><h2 className="font-black uppercase text-gray-800 mb-8 text-center">Accès Privé</h2><form onSubmit={(e) => { e.preventDefault(); const pass = e.target.pass.value; const users = {[PASS_BAPTISTE]:'baptiste',[PASS_SOEUR]:'soeur',[PASS_PERE]:'pere'}; if(users[pass]){localStorage.setItem('stock_user',users[pass]);localStorage.setItem('stock_session','active');setIsLoggedIn(true);}}} className="space-y-4"><input name="pass" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none"/><button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest">Connexion</button></form></div></div>;
+            if (!isLoggedIn) return (
+                <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+                        <h2 className="font-black uppercase text-center mb-8">Accès Privé</h2>
+                        <form onSubmit={(e) => { e.preventDefault(); const pass = e.target.p.value; const users = {[PASS_BAPTISTE]:'baptiste',[PASS_SOEUR]:'soeur',[PASS_PERE]:'pere'}; if(users[pass]){localStorage.setItem('stock_user',users[pass]);localStorage.setItem('stock_session','active');setIsLoggedIn(true);}}} className="space-y-4">
+                            <input name="p" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none transition-all focus:border-green-500" />
+                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all">Connexion</button>
+                        </form>
+                    </div>
+                </div>
+            );
 
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-32">
@@ -183,15 +216,15 @@
                         {/* VUE TICKET */}
                         {view === 'receipt' && (
                             <div className="animate-up space-y-4">
-                                <div className="bg-white p-8 rounded-[2rem] text-center border-2 border-dashed border-gray-200">
+                                <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-200">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
                                     <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg">📷 PHOTO OU PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Analyse en cours...</p>}
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
                                         <div className="flex justify-between items-center">
-                                            <span className="font-black text-xs uppercase text-gray-700 leading-tight w-2/3">{item.nom}</span>
+                                            <span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">{item.nom}</span>
                                             {item.typeStock === 'unite' && (
                                                 <div className="flex items-center bg-gray-100 rounded-lg p-1">
                                                     <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
@@ -200,7 +233,6 @@
                                                 </div>
                                             )}
                                         </div>
-                                        {/* SÉLECTEUR TYPE STOCK DANS LE TICKET */}
                                         <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
                                             <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'unite'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${item.typeStock === 'unite' ? 'bg-white shadow-sm text-black' : 'text-gray-300'}`}>Unités</button>
                                             <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'pourcent'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${item.typeStock === 'pourcent' ? 'bg-white shadow-sm text-black' : 'text-gray-300'}`}>Pourcent %</button>
@@ -219,7 +251,7 @@
                                         </div>
                                     </div>
                                 ))}
-                                {receiptItems.length > 0 && <button onClick={saveReceipt} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest">Enregistrer au stock 🚀</button>}
+                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ const n={id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:i.typeStock,stock:i.typeStock==='pourcent'?100:i.qte,date:i.dlc,congele:i.congele?1:0,checked:0}; await syncWithServer(n); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-xl">Ranger au stock 🚀</button>}
                             </div>
                         )}
 
@@ -229,7 +261,7 @@
                             if (zItems.length === 0) return null;
                             return (
                                 <div key={zone} className="mb-3">
-                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-widest">
+                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-widest transition-all">
                                         <span>{STRUCTURE[zone].icon} {zone}</span>
                                         <span className="opacity-30">{openSections[zone] ? '▲' : '▼'}</span>
                                     </button>
@@ -237,7 +269,7 @@
                                         const rItems = zItems.filter(p => p.rayon === ray.id);
                                         if (rItems.length === 0) return null;
                                         return (
-                                            <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2">
+                                            <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2 animate-up">
                                                 <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-3 px-5 bg-gray-50/50 flex justify-between text-[9px] font-black uppercase text-gray-400">
                                                     <span>{ray.icon} {ray.id}</span>
                                                     <span>{rItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
@@ -245,20 +277,18 @@
                                                 {openSections[ray.id] && rItems.map(p => (
                                                     <div key={p.id} className="p-4 flex justify-between items-center border-t border-gray-50">
                                                         <div className="flex flex-col">
-                                                            <span className="font-bold text-sm text-gray-800 uppercase leading-tight">{p.nom}</span>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-[9px] text-gray-400 italic font-bold">{p.date || 'SANS DLC'}</span>
+                                                            <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] text-gray-400 italic font-bold uppercase tracking-tighter">{p.date || 'SANS DLC'}</span>
                                                                 {p.congele == 1 && <span className="text-[9px]">❄️</span>}
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">
-                                                                {p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}
-                                                            </span>
+                                                            <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">{p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}</span>
                                                             <div className="flex gap-2">
-                                                                <button onClick={() => { const u = {...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} className={`w-10 h-10 rounded-xl border flex items-center justify-center ${p.congele==1?'bg-blue-500 text-white':'bg-white text-gray-200'}`}>❄️</button>
-                                                                <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm">-</button>
-                                                                <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm">+</button>
+                                                                <button onClick={() => { const u={...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${p.congele==1?'bg-blue-500 text-white shadow-inner':'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
+                                                                <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">-</button>
+                                                                <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">+</button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -272,15 +302,15 @@
 
                         {/* VUE COURSES */}
                         {view === 'shopping' && (
-                            <div className="bg-white rounded-[2rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
-                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-12 text-center text-gray-300 italic text-xs">Liste de courses vide</p> :
+                            <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
+                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-12 text-center text-gray-300 italic text-xs">Liste vide</p> :
                                     produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6">
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
                                             <div className="flex items-center gap-4">
                                                 <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
                                                 <div><p className="font-bold text-sm text-gray-700 uppercase leading-none">{p.nom}</p><p className="text-[8px] font-black uppercase text-gray-300 mt-1">{p.rayon}</p></div>
                                             </div>
-                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 p-2">✕</button>
+                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 p-2 text-lg">✕</button>
                                         </div>
                                     ))
                                 }
@@ -292,16 +322,17 @@
                     {showAddModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
                             <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
+                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
                                 <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl">
                                     <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Unités</button>
                                     <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
                                         {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                     </select>
                                 </div>
@@ -309,20 +340,17 @@
                                     <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
                                 </div>
-                                <label className="flex items-center gap-3 mb-4 p-4 bg-blue-50/50 rounded-2xl cursor-pointer">
-                                    <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg" />
-                                    <span className="text-[10px] font-black text-blue-800 uppercase italic tracking-tighter leading-none">Placé au congélateur ❄️</span>
-                                </label>
-                                <label className="flex items-center gap-3 mb-8 p-4 bg-red-50/50 rounded-2xl cursor-pointer">
-                                    <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg" />
-                                    <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-none">Ajouter directement aux courses 🛒</span>
-                                </label>
-                                <button onClick={() => { 
-                                    const n = {...form, id: Date.now(), stock: form.directShopping ? 0 : Number(form.stock), congele: form.congele?1:0, checked: 0}; 
-                                    setProduits([n, ...produits]); syncWithServer(n); setShowAddModal(false); 
-                                    setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
-                                }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all tracking-[0.2em]">Enregistrer ✅</button>
-                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[9px] font-black uppercase mt-4 text-center">Annuler</button>
+                                <div className="space-y-3 mb-8">
+                                    <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                                        <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
+                                        <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
+                                    </label>
+                                    <label className="flex items-center gap-3 p-4 bg-red-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                                        <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm" />
+                                        <span className="text-[10px] font-black text-red-700 uppercase italic">Direct aux courses 🛒</span>
+                                    </label>
+                                </div>
+                                <button onClick={async () => { const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',directShopping:false,congele:false}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
                             </div>
                         </div>
                     )}
@@ -335,18 +363,18 @@
                                 <h3 className="font-black uppercase text-sm mb-2 text-gray-800">Stock épuisé !</h3>
                                 <p className="text-gray-500 text-xs mb-8 leading-relaxed">Ajouter <span className="text-green-600 font-bold">{confirmDelete.produit?.nom}</span> à votre liste de courses ?</p>
                                 <div className="flex flex-col gap-3">
-                                    <button onClick={() => { const p = confirmDelete.produit; const u = {...p, stock: 0}; setProduits(produits.map(i => i.id === p.id ? u : i)); syncWithServer(u); setConfirmDelete({ show: false, produit: null }); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg">Oui, mettre en courses</button>
-                                    <button onClick={() => { const p = confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); setConfirmDelete({ show: false, produit: null }); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]">Non, supprimer</button>
-                                    <button onClick={() => setConfirmDelete({ show: false, produit: null })} className="text-[9px] font-black text-gray-300 uppercase mt-2">Annuler</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Oui, mettre en courses</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Non, supprimer</button>
+                                    <button onClick={() => setConfirmDelete({show:false,produit:null})} className="text-[9px] font-black text-gray-300 uppercase mt-2">Annuler</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
-                        <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view === 'home' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🏠</button>
-                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
-                        <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view === 'shopping' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🛒</button>
+                        <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view==='home'?'text-green-600 scale-125':'text-gray-200'}`}>🏠</button>
+                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
+                        <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view==='shopping'?'text-green-600 scale-125':'text-gray-200'}`}>🛒</button>
                     </nav>
                 </div>
             );
