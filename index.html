@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
@@ -29,10 +28,6 @@
         const { useState, useEffect, useMemo } = React;
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
-        const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
-        const PASS_SOEUR = "1912";
-        const PASS_PERE = "5678";
-
         const STRUCTURE = {
             "Alimentaire": { icon: "🧺", rayons: [
                 { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
@@ -46,28 +41,6 @@
             "Divers": { icon: "📦", rayons: [
                 { id: "Pharmacie", icon: "🩹" }, { id: "Animaux", icon: "🐾" }, { id: "Bricolage", icon: "🛠️" }, { id: "Autres", icon: "🌀" }
             ]}
-        };
-
-        const Login = ({ onLogin }) => {
-            const [pass, setPass] = useState('');
-            const [error, setError] = useState(false);
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                const users = { [PASS_BAPTISTE]: 'baptiste', [PASS_SOEUR]: 'soeur', [PASS_PERE]: 'pere' };
-                if (users[pass]) { localStorage.setItem('stock_user', users[pass]); onLogin(); }
-                else { setError(true); setPass(''); }
-            };
-            return (
-                <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up">
-                        <h2 className="font-black uppercase text-gray-800 mb-8 italic italic tracking-widest">Accès Privé</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <input type="password" inputMode="numeric" placeholder="Code..." className={`w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} />
-                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg">Connexion</button>
-                        </form>
-                    </div>
-                </div>
-            );
         };
 
         const App = () => {
@@ -152,7 +125,7 @@
                                     const nF = nettoyer(nomC);
                                     if (nF.length > 2) {
                                         const ex = produits.find(p => p.nom.toUpperCase() === nF);
-                                        res.push({ nom: nF, qte, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres' });
+                                        res.push({ nom: nF, qte, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres', typeStock: ex?.typeStock || 'unite' });
                                         break;
                                     }
                                 }
@@ -162,7 +135,7 @@
                             const nF = nettoyer(nB);
                             if (nF.length > 2 && !res.some(p => p.nom === nF)) {
                                 const ex = produits.find(p => p.nom.toUpperCase() === nF);
-                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres' });
+                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: ex?.zone || 'Alimentaire', rayon: ex?.rayon || 'Autres', typeStock: ex?.typeStock || 'unite' });
                             }
                         }
                     });
@@ -174,36 +147,24 @@
             const saveReceipt = async () => {
                 setLoading(true);
                 for (const item of receiptItems) {
-                    const n = { id: Date.now() + Math.random(), nom: item.nom, zone: item.zone, rayon: item.rayon, typeStock: 'unite', stock: item.qte, date: item.dlc, congele: item.congele ? 1 : 0, checked: 0 };
+                    const n = { id: Date.now() + Math.random(), nom: item.nom, zone: item.zone, rayon: item.rayon, typeStock: item.typeStock, stock: item.typeStock === 'pourcent' ? 100 : item.qte, date: item.dlc, congele: item.congele ? 1 : 0, checked: 0 };
                     await syncWithServer(n);
                 }
                 window.location.reload();
             };
 
-            // --- FONCTIONS STOCK ---
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
                     let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
-                    if (next <= 0) {
-                        setConfirmDelete({ show: true, produit: p });
-                        return p; 
-                    }
+                    if (next <= 0) { setConfirmDelete({ show: true, produit: p }); return p; }
                     const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
                     syncWithServer(u); return u;
                 });
                 setProduits(newP);
             };
 
-            const checkDLC = (dateStr, congele) => {
-                if (!dateStr || congele) return { status: 'ok', msg: '' };
-                const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
-                if (diff < 0) return { status: 'expired', msg: 'PÉRIMÉ' };
-                if (diff <= 3) return { status: 'warning', msg: 'DLC PROCHE' };
-                return { status: 'ok', msg: '' };
-            };
-
-            if (!isLoggedIn) return <Login onLogin={() => { localStorage.setItem('stock_session', 'active'); setIsLoggedIn(true); }} />;
+            if (!isLoggedIn) return <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6"><div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl"><h2 className="font-black uppercase text-gray-800 mb-8 text-center">Accès Privé</h2><form onSubmit={(e) => { e.preventDefault(); const pass = e.target.pass.value; const users = {[PASS_BAPTISTE]:'baptiste',[PASS_SOEUR]:'soeur',[PASS_PERE]:'pere'}; if(users[pass]){localStorage.setItem('stock_user',users[pass]);localStorage.setItem('stock_session','active');setIsLoggedIn(true);}}} className="space-y-4"><input name="pass" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none"/><button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest">Connexion</button></form></div></div>;
 
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-32">
@@ -212,14 +173,10 @@
                             <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
                             <div className="flex gap-2">
                                 <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">🧾 Ticket</button>
-                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">
-                                    {view === 'home' ? 'Courses' : 'Stock'}
-                                </button>
+                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">{view === 'home' ? 'Courses' : 'Stock'}</button>
                             </div>
                         </div>
-                        {view === 'home' && (
-                            <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        )}
+                        {view === 'home' && <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />}
                     </header>
 
                     <main className="p-4">
@@ -228,18 +185,25 @@
                             <div className="animate-up space-y-4">
                                 <div className="bg-white p-8 rounded-[2rem] text-center border-2 border-dashed border-gray-200">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
-                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block">📷 PHOTO / PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse...</p>}
+                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg">📷 PHOTO OU PDF</label>
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Analyse en cours...</p>}
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
                                         <div className="flex justify-between items-center">
                                             <span className="font-black text-xs uppercase text-gray-700 leading-tight w-2/3">{item.nom}</span>
-                                            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
-                                                <span className="px-2 font-black text-xs">x{item.qte}</span>
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
-                                            </div>
+                                            {item.typeStock === 'unite' && (
+                                                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                                    <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
+                                                    <span className="px-2 font-black text-xs">x{item.qte}</span>
+                                                    <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* SÉLECTEUR TYPE STOCK DANS LE TICKET */}
+                                        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
+                                            <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'unite'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${item.typeStock === 'unite' ? 'bg-white shadow-sm text-black' : 'text-gray-300'}`}>Unités</button>
+                                            <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'pourcent'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${item.typeStock === 'pourcent' ? 'bg-white shadow-sm text-black' : 'text-gray-300'}`}>Pourcent %</button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>
@@ -251,7 +215,7 @@
                                         </div>
                                         <div className="flex gap-2">
                                             <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.dlc} onChange={(e) => { const n = [...receiptItems]; n[idx].dlc = e.target.value; setReceiptItems(n); }} />
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl ${item.congele ? 'bg-blue-500' : 'bg-gray-100'}`}>❄️</button>
+                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 shadow-inner' : 'bg-gray-100'}`}>❄️</button>
                                         </div>
                                     </div>
                                 ))}
@@ -259,7 +223,7 @@
                             </div>
                         )}
 
-                        {/* VUE STOCK (REPLIABLE) */}
+                        {/* VUE STOCK REPLIABLE */}
                         {view === 'home' && Object.keys(STRUCTURE).map(zone => {
                             const zItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
                             if (zItems.length === 0) return null;
@@ -278,29 +242,27 @@
                                                     <span>{ray.icon} {ray.id}</span>
                                                     <span>{rItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
                                                 </button>
-                                                {openSections[ray.id] && rItems.map(p => {
-                                                    const dlc = checkDLC(p.date, p.congele == 1);
-                                                    return (
-                                                        <div key={p.id} className={`p-4 flex justify-between items-center border-t border-gray-50 ${dlc.status === 'warning' ? 'warning-dlc' : ''}`}>
-                                                            <div className="flex flex-col">
-                                                                <span className="font-bold text-sm text-gray-800 uppercase leading-tight">{p.nom}</span>
-                                                                <div className="flex items-center gap-2 mt-1">
-                                                                    <span className="text-[9px] text-gray-400 italic font-bold">{p.date ? (dlc.status === 'expired' ? '🔴 PÉRIMÉ' : '⌛ '+p.date) : '♻️ Sans date'}</span>
-                                                                    {p.congele == 1 && <span className="text-[9px]">❄️</span>}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">x{p.stock}</span>
-                                                                <div className="flex gap-2">
-                                                                    <button onClick={() => { const u = {...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} 
-                                                                            className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center border transition-all ${p.congele == 1 ? 'bg-blue-500 text-white border-blue-600 shadow-inner' : 'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
-                                                                    <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">-</button>
-                                                                    <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">+</button>
-                                                                </div>
+                                                {openSections[ray.id] && rItems.map(p => (
+                                                    <div key={p.id} className="p-4 flex justify-between items-center border-t border-gray-50">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-sm text-gray-800 uppercase leading-tight">{p.nom}</span>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[9px] text-gray-400 italic font-bold">{p.date || 'SANS DLC'}</span>
+                                                                {p.congele == 1 && <span className="text-[9px]">❄️</span>}
                                                             </div>
                                                         </div>
-                                                    );
-                                                })}
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">
+                                                                {p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}
+                                                            </span>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => { const u = {...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} className={`w-10 h-10 rounded-xl border flex items-center justify-center ${p.congele==1?'bg-blue-500 text-white':'bg-white text-gray-200'}`}>❄️</button>
+                                                                <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm">-</button>
+                                                                <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm">+</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         );
                                     })}
@@ -330,13 +292,16 @@
                     {showAddModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
                             <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest">Nouvel Article</h2>
-                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+                                <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl">
+                                    <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Unités</button>
+                                    <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
+                                </div>
                                 <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
                                         {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                     </select>
                                 </div>
@@ -346,30 +311,29 @@
                                 </div>
                                 <label className="flex items-center gap-3 mb-4 p-4 bg-blue-50/50 rounded-2xl cursor-pointer">
                                     <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg" />
-                                    <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
+                                    <span className="text-[10px] font-black text-blue-800 uppercase italic tracking-tighter leading-none">Placé au congélateur ❄️</span>
                                 </label>
                                 <label className="flex items-center gap-3 mb-8 p-4 bg-red-50/50 rounded-2xl cursor-pointer">
                                     <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg" />
-                                    <span className="text-[10px] font-black text-red-700 uppercase italic">Ajouter directement aux courses 🛒</span>
+                                    <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-none">Ajouter directement aux courses 🛒</span>
                                 </label>
                                 <button onClick={() => { 
-                                    const nouvelleQte = form.directShopping ? 0 : Number(form.stock);
-                                    const n = {...form, id: Date.now(), stock: nouvelleQte, congele: form.congele?1:0, checked: 0}; 
+                                    const n = {...form, id: Date.now(), stock: form.directShopping ? 0 : Number(form.stock), congele: form.congele?1:0, checked: 0}; 
                                     setProduits([n, ...produits]); syncWithServer(n); setShowAddModal(false); 
                                     setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
-                                }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all tracking-[0.2em]">Enregistrer ✅</button>
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[9px] font-black uppercase mt-4 text-center">Annuler</button>
                             </div>
                         </div>
                     )}
 
-                    {/* MODALE DE SUPPRESSION DESIGN */}
+                    {/* MODALE SUPPRESSION DESIGN */}
                     {confirmDelete.show && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6">
                             <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up text-center border-4 border-green-500">
                                 <div className="text-4xl mb-4">🛒</div>
                                 <h3 className="font-black uppercase text-sm mb-2 text-gray-800">Stock épuisé !</h3>
-                                <p className="text-gray-500 text-xs mb-8">Voulez-vous ajouter <span className="text-green-600 font-bold">{confirmDelete.produit?.nom}</span> à votre liste de courses ?</p>
+                                <p className="text-gray-500 text-xs mb-8 leading-relaxed">Ajouter <span className="text-green-600 font-bold">{confirmDelete.produit?.nom}</span> à votre liste de courses ?</p>
                                 <div className="flex flex-col gap-3">
                                     <button onClick={() => { const p = confirmDelete.produit; const u = {...p, stock: 0}; setProduits(produits.map(i => i.id === p.id ? u : i)); syncWithServer(u); setConfirmDelete({ show: false, produit: null }); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg">Oui, mettre en courses</button>
                                     <button onClick={() => { const p = confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); setConfirmDelete({ show: false, produit: null }); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]">Non, supprimer</button>
