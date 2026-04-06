@@ -1,38 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
-<meta charset="UTF-8">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#22c55e">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
-    <link rel="icon" href="https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true">
+    <title>Mon Stockage Pro</title>
 
-    <link rel="manifest" href='data:application/manifest+json,{
-        "name": "Mon Stockage",
-        "short_name": "Stock",
-        "start_url": ".",
-        "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#22c55e",
-        "icons": [
-            {
-                "src": "https://ui-avatars.com/api/?name=S&background=22c55e&color=fff&size=512&font-size=0.6&bold=true",
-                "sizes": "512x512",
-                "type": "image/png",
-                "purpose": "any maskable"
-            }
-        ]
-    }'>
-    
-    <title>Mon Stockage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+
     <style>
         body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -40,707 +23,429 @@
         .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .animate-up { animation: slideUp 0.3s ease-out; }
-        * { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-gray-100">
     <div id="root"></div>
 
     <script type="text/babel">
-    const API_URL = "https://baptisterouxel.fr/stock/api.php";
-    const { useState, useEffect } = React;
+        const API_URL = "https://baptisterouxel.fr/stock/api.php";
+        const { useState, useEffect, useMemo, useRef } = React;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
-    const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
-const PASS_SOEUR = "1912"; // Le code de ta soeur
+        const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
+        const PASS_SOEUR = "1912";
         const PASS_PERE = "5678";
 
-    const STRUCTURE = {
-        "Alimentaire": { icon: "🧺", rayons: [
-            { id: "Fruits et Légumes", icon: "🍎" }, 
-            { id: "Viande", icon: "🥩" }, 
-            { id: "Poisson", icon: "🐟" },
-            { id: "Produits Laitiers", icon: "🥛" }, 
-            { id: "Salé", icon: "🧂" }, 
-            { id: "Sucré", icon: "🍪" }, 
-            { id: "Condiments", icon: "🍯" },
-            { id: "Boissons", icon: "🍷" }, 
-            { id: "Surgelés", icon: "❄️" }, 
-            { id: "Boulangerie", icon: "🥖" }
-        ]},
-        "Hygiène": { icon: "✨", rayons: [
-            { id: "Hygiène Corporelle", icon: "🧼" }, 
-            { id: "Hygiène Dentaire", icon: "🪥" }, 
-            { id: "Produits Ménagers", icon: "🧹" }, 
-            { id: "Papier", icon: "🧻" }, 
-            { id: "Lessive", icon: "🧺" }
-        ]},
-        "Divers": { icon: "📦", rayons: [
-            { id: "Pharmacie", icon: "🩹" },
-            { id: "Animaux", icon: "🐾" },
-            { id: "Bricolage", icon: "🛠️" },
-            { id: "Autres", icon: "🌀" }
-        ]}
-    };
-
-    const Login = ({ onLogin }) => {
-        const [pass, setPass] = useState('');
-        const [error, setError] = useState(false);
-        const handleSubmit = (e) => {
-    e.preventDefault();
-    if (pass === PASS_BAPTISTE) {
-        localStorage.setItem('stock_user', 'baptiste');
-        onLogin();
-    } else if (pass === PASS_SOEUR) {
-        localStorage.setItem('stock_user', 'soeur');
-        onLogin();
-    } else if (pass === PASS_PERE) {
-        localStorage.setItem('stock_user', 'pere');
-        onLogin();
-    } else {
-        setError(true);
-        setPass('');
-    }
-};
-        return (
-            <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6">
-                <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center animate-up border-4 border-white/20">
-                    <div className="text-5xl mb-6">🔐</div>
-                    <h2 className="font-black uppercase tracking-widest text-gray-800 mb-2 italic">Accès Privé</h2>
-                    <p className="text-gray-400 text-xs mb-8 font-bold uppercase tracking-widest">Mon Stockage</p>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <input type="password" inputMode="numeric" placeholder="Mot de passe..." className={`w-full p-5 bg-gray-50 rounded-2xl border-2 outline-none font-bold text-center text-xl transition-all ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} />
-                        <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Connexion</button>
-                    </form>
-                </div>
-            </div>
-        );
-    };
-
-    const App = () => {
-        const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
-        const [produits, setProduits] = useState([]);
-        const [view, setView] = useState('home');
-        const [showAddModal, setShowAddModal] = useState(false);
-        const [searchTerm, setSearchTerm] = useState('');
-        const [openSections, setOpenSections] = useState({});
-        const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-        const [confirmModal, setConfirmModal] = useState({ show: false, produit: null });
-        const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-const [purchaseQueue, setPurchaseQueue] = useState([]);
-const [currentPurchaseIdx, setCurrentPurchaseIdx] = useState(0);
-        const [showNotifDetails, setShowNotifDetails] = useState(false);
-        
-        const currentUser = localStorage.getItem('stock_user') || 'baptiste';
-
-        useEffect(() => {
-            if (isLoggedIn) {
-                // On récupère l'utilisateur (baptiste ou soeur)
-                const user = localStorage.getItem('stock_user') || 'baptiste';
-                
-                // On ajoute &user=... à la fin de l'URL
-                fetch(`${API_URL}?action=get_stock&user=${user}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data && Array.isArray(data)) setProduits(data);
-                        else setProduits([]);
-                    })
-                    .catch(() => setProduits([]));
-            }
-        }, [isLoggedIn]);
-
-        const syncWithServer = async (produit) => {
-            try {
-                // On récupère l'utilisateur (baptiste ou soeur)
-                const user = localStorage.getItem('stock_user') || 'baptiste';
-
-                // On ajoute &user=... à la fin de l'URL
-                await fetch(`${API_URL}?action=save_product&user=${user}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(produit)
-                });
-            } catch (err) { console.error("Erreur synchro:", err); }
+        const STRUCTURE = {
+            "Alimentaire": { icon: "🧺", rayons: [
+                { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, 
+                { id: "Poisson", icon: "🐟" }, { id: "Produits Laitiers", icon: "🥛" }, 
+                { id: "Salé", icon: "🧂" }, { id: "Sucré", icon: "🍪" }, 
+                { id: "Condiments", icon: "🍯" }, { id: "Boissons", icon: "🍷" }, 
+                { id: "Surgelés", icon: "❄️" }, { id: "Boulangerie", icon: "🥖" }
+            ]},
+            "Hygiène": { icon: "✨", rayons: [
+                { id: "Hygiène Corporelle", icon: "🧼" }, { id: "Hygiène Dentaire", icon: "🪥" }, 
+                { id: "Produits Ménagers", icon: "🧹" }, { id: "Papier", icon: "🧻" }, { id: "Lessive", icon: "🧺" }
+            ]},
+            "Divers": { icon: "📦", rayons: [
+                { id: "Pharmacie", icon: "🩹" }, { id: "Animaux", icon: "🐾" },
+                { id: "Bricolage", icon: "🛠️" }, { id: "Autres", icon: "🌀" }
+            ]}
         };
 
-        const handleLoginSuccess = () => {
-            localStorage.setItem('stock_session', 'active');
-            setIsLoggedIn(true);
-        };
-
-const BarcodeScanner = ({ onDetected }) => {
-    const [scanning, setScanning] = React.useState(false);
-    // On utilise une Ref pour le verrouillage, c'est plus propre en React
-    const isProcessing = React.useRef(false); 
-
-    const handleDetection = async (data) => {
-        if (isProcessing.current) return;
-        
-        const code = data.codeResult.code;
-        if (!code || code.length < 8) return;
-
-        isProcessing.current = true; // On verrouille immédiatement
-        Quagga.pause(); // On fige la caméra
-
-        try {
-            const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-            const json = await res.json();
-            
-            if (json.status === 1) {
-            const p = json.product;
-            const nom = p.product_name_fr || p.product_name || "Produit inconnu";
-            
-            // --- LOGIQUE DE RANGEMENT AUTOMATIQUE ---
-let zoneAuto = "Alimentaire";
-let rayonAuto = "Autres";
-
-const tags = (p.categories_tags || []).join(' ').toLowerCase();
-const nomMin = nom.toLowerCase();
-
-// 1. BOISSONS (On checke d'abord le nom et les tags)
-if (tags.includes('boisson') || tags.includes('jus') || tags.includes('nectar') || nomMin.includes('jus') || tags.includes('soda')) {
-    rayonAuto = "Boissons";
-} 
-// 2. PRODUITS LAITIERS (Fromage, yaourt, lait, ricotta...)
-else if (tags.includes('lait') || tags.includes('fromage') || tags.includes('yaourt') || tags.includes('lacté') || tags.includes('dairy') || nomMin.includes('ricotta') || nomMin.includes('beurre')) {
-    rayonAuto = "Produits Laitiers";
-} 
-// 3. VIANDE / POISSON / CHARCUTERIE
-else if (tags.includes('viande') || tags.includes('poulet') || tags.includes('charcuterie') || nomMin.includes('jambon') || nomMin.includes('poitrine')) {
-    rayonAuto = "Viande";
-} else if (tags.includes('poisson') || tags.includes('mer') || tags.includes('saumon')) {
-    rayonAuto = "Poisson";
-}
-// 4. SURGELÉS
-else if (tags.includes('surgel') || tags.includes('frozen')) {
-    rayonAuto = "Surgelés";
-}
-// 5. FRUITS ET LÉGUMES
-else if (tags.includes('fruit') || tags.includes('legume')) {
-    rayonAuto = "Fruits et Légumes";
-} 
-// 6. ÉPICERIE SUCRÉE / BOULANGERIE
-else if (tags.includes('biscuit') || tags.includes('chocolat') || tags.includes('confiture') || tags.includes('sucre')) {
-    rayonAuto = "Sucré";
-} else if (tags.includes('pain') || tags.includes('boulangerie') || tags.includes('biscotte')) {
-    rayonAuto = "Boulangerie";
-}
-// 7. ÉPICERIE SALÉE (Pâtes, Riz, Conserves)
-else if (tags.includes('pate') || tags.includes('riz') || tags.includes('conserve') || tags.includes('lentille')) {
-    rayonAuto = "Salé";
-}
-// 8. HYGIÈNE & ENTRETIEN
-else if (tags.includes('hygiene') || tags.includes('savon') || tags.includes('dent')) {
-    zoneAuto = "Hygiène";
-    rayonAuto = "Hygiène Corporelle";
-} else if (tags.includes('entretien') || tags.includes('ménager') || tags.includes('lessive')) {
-    zoneAuto = "Hygiène";
-    rayonAuto = "Produits Ménagers";
-}
-
-onDetected(nom, zoneAuto, rayonAuto);
-            
-            Quagga.stop();
-            setScanning(false);
-        } else {
-            // On désactive tout avant l'alerte
-            Quagga.offDetected(); 
-            alert("Produit inconnu (" + code + ")");
-            // On ferme le scanner pour forcer l'utilisateur à se repositionner proprement
-            Quagga.stop();
-            setScanning(false);
-        }
-    } catch (e) {
-        Quagga.offDetected();
-        console.error("Erreur API:", e);
-        alert("Erreur de connexion au serveur.");
-        setScanning(false);
-    } finally {
-        setTimeout(() => { isProcessing.current = false; }, 2000);
-    }
-    };
-
-    const startScan = () => {
-        setScanning(true);
-        isProcessing.current = false;
-
-        // Petit délai pour laisser le container HTML s'afficher
-        setTimeout(() => {
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scanner-container'),
-                    constraints: {
-                        facingMode: "environment",
-                        width: { min: 640 },
-                        height: { min: 480 }
-                    },
-                },
-                decoder: { 
-                    readers: ["ean_reader", "ean_8_reader", "code_128_reader"] 
-                },
-                locate: true,
-                halfSample: true
-            }, (err) => {
-                if (err) {
-                    alert("Erreur caméra : Vérifiez les autorisations");
-                    setScanning(false);
-                    return;
+        // --- COMPOSANT LOGIN ---
+        const Login = ({ onLogin }) => {
+            const [pass, setPass] = useState('');
+            const [error, setError] = useState(false);
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if ([PASS_BAPTISTE, PASS_SOEUR, PASS_PERE].includes(pass)) {
+                    localStorage.setItem('stock_user', pass === PASS_BAPTISTE ? 'baptiste' : (pass === PASS_SOEUR ? 'soeur' : 'pere'));
+                    onLogin();
+                } else {
+                    setError(true); setPass('');
                 }
-                
-                // --- LE TEMPS DE POSITIONNEMENT (1.5s) ---
-                // La caméra s'allume mais on n'écoute pas encore le code-barre
-                setTimeout(() => {
-                    Quagga.offDetected(); // NETTOYAGE CRUCIAL
-                    Quagga.start();
-                    Quagga.onDetected(handleDetection);
-                }, 1500);
-            });
-        }, 300);
-    };
-
-    return (
-        <div className="mb-6">
-            {!scanning ? (
-                <button onClick={startScan} className="w-full p-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-all">
-                    <span>📷</span> Scanner un Code-Barre
-                </button>
-            ) : (
-                <div className="relative animate-up">
-                    <div id="scanner-container" className="w-full h-64 rounded-[2rem] overflow-hidden border-4 border-blue-500 bg-black [&>video]:w-full [&>video]:h-full [&>video]:object-cover"></div>
-                    <button onClick={() => { Quagga.stop(); setScanning(false); }} className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase z-10 shadow-lg">ANNULER</button>
-                    <div className="absolute inset-0 border-2 border-red-500/20 pointer-events-none flex items-center justify-center">
-                        <div className="w-[85%] h-[2px] bg-red-500 shadow-[0_0_15px_red] animate-pulse"></div>
+            };
+            return (
+                <div className="fixed inset-0 bg-green-600 flex items-center justify-center z-[100] p-6 text-center">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl animate-up">
+                        <div className="text-5xl mb-6">🔐</div>
+                        <h2 className="font-black uppercase text-gray-800 mb-8 italic">Mon Stockage</h2>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <input type="password" inputMode="numeric" placeholder="Code..." className={`w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl ${error ? 'border-red-300' : 'border-transparent focus:border-green-500'}`} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} />
+                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all">Connexion</button>
+                        </form>
                     </div>
                 </div>
-            )}
-        </div>
-    );
-};
-
-const handleBarcodeResult = (nom, zoneAuto, rayonAuto) => {
-    // On remplit le formulaire avec ce que l'IA a trouvé
-    setForm({ 
-        ...form, 
-        nom: nom.toUpperCase(), 
-        zone: zoneAuto, 
-        rayon: rayonAuto, 
-        stock: 1, 
-        date: '' 
-    });
-    
-    // On ouvre ta modale d'ajout classique
-    // Comme ça, tu peux vérifier et modifier la zone/rayon avant de valider
-    setShowAddModal(true); 
-};
-
-        const updateStock = (id, delta) => {
-    const nouveauxProduits = produits.map(p => {
-        if (p.id !== id) return p;
-        let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
-        
-        if (next <= 0) {
-            // AU LIEU DU CONFIRM, ON OUVRE LA MODALE PERSO
-            setConfirmModal({ show: true, produit: p });
-            return p; // On ne change rien tant qu'on n'a pas cliqué sur OUI
-        }
-        
-        const updated = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
-        syncWithServer(updated);
-        return updated;
-    });
-    setProduits(nouveauxProduits);
-};
-
-        // --- NOUVELLE FONCTION ACHETER ---
-        const validerAchats = () => {
-            const aTraiter = produits.filter(p => p.checked == 1);
-            if (aTraiter.length === 0) return alert("Cochez d'abord les produits achetés !");
-
-            setPurchaseQueue(aTraiter);
-            setCurrentPurchaseIdx(0);
-            
-            // On pré-remplit le formulaire pour le premier produit de la liste
-            setForm({
-                stock: aTraiter[0].typeStock === 'unite' ? 1 : 100,
-                date: '', // Vide pour laisser le choix au calendrier
-                nom: aTraiter[0].nom // Pour l'affichage
-            });
-            
-            setShowPurchaseModal(true);
-        };
-        
-        const confirmerAjoutCourses = () => {
-    const p = confirmModal.produit;
-    const updated = { ...p, stock: 0, checked: 0 };
-    setProduits(produits.map(item => item.id === p.id ? updated : item));
-    syncWithServer(updated);
-    setConfirmModal({ show: false, produit: null });
-};
-
-const refuserAjoutEtSupprimer = (p) => {
-    // 1. Suppression serveur avec le currentUser pour la bonne table
-    fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
-    
-    // 2. Suppression locale
-    setProduits(produits.filter(item => item.id !== p.id));
-    
-    // 3. Fermeture de la modale
-    setConfirmModal({ show: false, produit: null });
-};
-
-const enregistrerEtapeAchat = async () => {
-    const p = purchaseQueue[currentPurchaseIdx];
-    const updated = { ...p, stock: form.stock, date: form.date, checked: 0 };
-
-    setProduits(prev => prev.map(item => item.id === p.id ? updated : item));
-    await syncWithServer(updated);
-
-    if (currentPurchaseIdx < purchaseQueue.length - 1) {
-        const suivant = purchaseQueue[currentPurchaseIdx + 1];
-        setCurrentPurchaseIdx(prev => prev + 1);
-        setForm({ stock: suivant.typeStock === 'unite' ? 1 : 100, date: '' });
-    } else {
-        setShowPurchaseModal(false);
-        setView('home');
-        alert("Stock mis à jour avec succès !");
-    }
-};
-        
-        const checkDLC = (dateStr, congele) => {
-            if (!dateStr || congele) return { status: 'ok', msg: '' };
-            const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
-            if (diff < 0) return { status: 'expired', msg: 'PÉRIMÉ' };
-            if (diff <= 3) return { status: 'warning', msg: 'DLC PROCHE' };
-            return { status: 'ok', msg: '' };
+            );
         };
 
-        // Fonction pour transformer AAAA-MM-JJ en JJ-MM-AAAA
-const formatDateFR = (dateUS) => {
-    if (!dateUS) return '';
-    const parts = dateUS.split('-');
-    if (parts.length !== 3) return dateUS;
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-};
-        const handleLogout = () => {
-    if (confirm("Voulez-vous vous déconnecter ?")) {
-        localStorage.removeItem('stock_session');
-        localStorage.removeItem('stock_user');
-        window.location.reload(); // Recharge la page pour revenir au Login
-    }
-};
+        const App = () => {
+            const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
+            const [produits, setProduits] = useState([]);
+            const [view, setView] = useState('home'); // home, shopping, receipt
+            const [loading, setLoading] = useState(false);
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [openSections, setOpenSections] = useState({});
+            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
+            
+            // États pour le scanner de ticket
+            const [receiptItems, setReceiptItems] = useState([]);
+            const [magasinInfo, setMagasinInfo] = useState({ nom: "Scanner Pro", color: "blue" });
 
-        // On calcule les alertes uniquement pour les produits en stock (stock > 0)
-const produitsEnStock = produits.filter(p => Number(p.stock) > 0);
+            const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
-const listePerimes = produitsEnStock.filter(p => checkDLC(p.date, p.congele == 1).status === 'expired');
-const listeWarnings = produitsEnStock.filter(p => checkDLC(p.date, p.congele == 1).status === 'warning');
+            useEffect(() => {
+                if (isLoggedIn) {
+                    fetch(`${API_URL}?action=get_stock&user=${currentUser}`)
+                        .then(res => res.json())
+                        .then(data => data && Array.isArray(data) ? setProduits(data) : setProduits([]))
+                        .catch(() => setProduits([]));
+                }
+            }, [isLoggedIn, currentUser]);
 
-const perimes = listePerimes.length;
-const bientotPerimes = listeWarnings.length;
+            const syncWithServer = async (produit) => {
+                try {
+                    await fetch(`${API_URL}?action=save_product&user=${currentUser}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(produit)
+                    });
+                } catch (err) { console.error("Erreur synchro:", err); }
+            };
 
-        if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
+            const handleLoginSuccess = () => {
+                localStorage.setItem('stock_session', 'active');
+                setIsLoggedIn(true);
+            };
 
-        return (
-            <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
-                <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
-    <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-            {/* Bouton déconnexion discret */}
-            <button onClick={handleLogout} className="text-gray-300 text-xs">🚪</button>
-            <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">
-                MON STOCKAGE
-            </h1>
-        </div>
-        <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">
-            {view === 'home' ? 'Courses' : 'Stock'}
-        </button>
-    </div>
-                    {view === 'home' && (
-                        <input type="text" placeholder="🔍 Rechercher un produit..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    )}
-                    {view === 'shopping' && <BarcodeScanner onDetected={handleBarcodeResult} />}
-                </header>
+            // --- LOGIQUE SCANNER TICKET (PDF / IMAGE) ---
+            const convertPdfToImage = async (file) => {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.5 });
+                const canvas = document.createElement("canvas");
+                const context = canvas.getContext("2d");
+                canvas.height = viewport.height; canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                return canvas.toDataURL("image/png");
+            };
 
-                <main className="p-4">
-                    {view === 'home' && (perimes > 0 || bientotPerimes > 0) && (
-    <div 
-        onClick={() => setShowNotifDetails(!showNotifDetails)}
-        className={`mb-6 p-4 rounded-[2rem] shadow-xl transition-all duration-300 cursor-pointer border-b-4 ${perimes > 0 ? 'bg-red-500 border-red-700' : 'bg-orange-400 border-orange-600'}`}
-    >
-        <div className="flex justify-between items-center text-white">
-            <div className="flex items-center gap-3">
-                <span className="text-2xl">{perimes > 0 ? '🚨' : '⏳'}</span>
-                <div>
-                    <p className="font-black text-[10px] uppercase tracking-widest leading-none opacity-80">Résumé DLC</p>
-                    <p className="text-sm font-bold">
-                        {perimes > 0 ? `${perimes} périmé(s)` : ''} 
-                        {perimes > 0 && bientotPerimes > 0 ? ' & ' : ''}
-                        {bientotPerimes > 0 ? `${bientotPerimes} à consommer` : ''}
-                    </p>
-                </div>
-            </div>
-            <span className="text-xs opacity-50">{showNotifDetails ? '▲' : '▼'}</span>
-        </div>
+            const scanTicket = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setLoading(true);
+                setReceiptItems([]);
 
-        {/* Détails qui s'affichent au clic */}
-        {showNotifDetails && (
-            <div className="mt-4 pt-4 border-t border-white/20 space-y-3 animate-up text-white">
-                {listePerimes.map(p => (
-                    <div key={p.id} className="flex justify-between items-center bg-black/10 p-2 rounded-xl">
-                        <span className="text-xs font-bold">🗑️ {p.nom}</span>
-                        <span className="text-[9px] font-black bg-red-700 px-2 py-1 rounded-lg uppercase">Périmé</span>
-                    </div>
-                ))}
-                {listeWarnings.map(p => (
-                    <div key={p.id} className="flex justify-between items-center bg-black/10 p-2 rounded-xl">
-                        <span className="text-xs font-bold">🍽️ {p.nom}</span>
-                        <span className="text-[9px] font-black bg-orange-600 px-2 py-1 rounded-lg uppercase italic">
-                            {formatDateFR(p.date)}
-                        </span>
-                    </div>
-                ))}
-            </div>
-        )}
-    </div>
-)}
-                    {view === 'home' ? (
-                        Object.keys(STRUCTURE).map(zone => {
-                            const zoneItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
-                            if (zoneItems.length === 0) return null;
-                            return (
-                                <div key={zone} className="mb-4">
-                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm border border-gray-100 mb-2 font-black text-xs uppercase italic text-gray-700 tracking-wider">
-                                        <span>{STRUCTURE[zone].icon} {zone}</span>
-                                        <span className="opacity-30">{openSections[zone] ? '▲' : '▼'}</span>
-                                    </button>
-                                    {openSections[zone] && STRUCTURE[zone].rayons.map(ray => {
-                                        const rayItems = zoneItems.filter(p => p.rayon === ray.id);
-                                        if (rayItems.length === 0) return null;
-                                        return (
-                                            <div key={ray.id} className="ml-4 mb-2 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                                                <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-2 text-[9px] font-black uppercase text-gray-400 px-4 bg-gray-50 flex justify-between border-b border-gray-100">
-                                                    <span>{ray.icon} {ray.id}</span>
-                                                    <span>{rayItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
-                                                </button>
-                                                {openSections[ray.id] && (
-                                                    <div className="p-2 space-y-2">
-                                                        {rayItems.map(p => {
-                                                            const dlc = checkDLC(p.date, p.congele == 1);
-                                                            return (
-                                                                <div key={p.id} className={`p-4 rounded-xl border transition-all ${dlc.status === 'warning' ? 'warning-dlc' : dlc.status === 'expired' ? 'bg-red-50 border-red-200 shadow-inner' : 'bg-white border-gray-100'}`}>
-                                                                    <div className="flex justify-between items-center mb-2 text-gray-800">
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-bold text-sm tracking-tight">{p.nom}</span>
-                                                                            {dlc.msg && <span className="text-[8px] font-black text-red-600 tracking-widest">{dlc.msg}</span>}
-                                                                        </div>
-                                                                        <span className="text-[10px] font-black px-2 py-1 bg-gray-100 rounded-lg">{p.typeStock === 'pourcent' ? p.stock+'%' : 'Qté: '+p.stock}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between items-center">
+                try {
+                    let source = file;
+                    if (file.type === "application/pdf") source = await convertPdfToImage(file);
+
+                    const worker = await Tesseract.createWorker("fra");
+                    await worker.setParameters({ preserve_interword_spaces: "1" });
+                    const { data: { text } } = await worker.recognize(source);
+                    const lText = text.toUpperCase();
+
+                    // Détection magasin
+                    if (lText.includes("LECLERC")) setMagasinInfo({ nom: "E.Leclerc", color: "orange" });
+                    else if (lText.includes("HYPER U") || lText.includes("VENTE")) setMagasinInfo({ nom: "Hyper U", color: "red" });
+
+                    const lignes = text.split("\n");
+                    const res = [];
+                    let stopLecture = false;
+
+                    const nettoyerNom = (nom) => {
+                        const firstDigit = nom.search(/\d/);
+                        let propre = firstDigit !== -1 ? nom.substring(0, firstDigit) : nom;
+                        propre = propre.replace(/[*_]/g, "").trim();
+                        while (propre.endsWith(".") || propre.endsWith(",")) propre = propre.slice(0, -1).trim();
+                        return propre;
+                    };
+
+                    lignes.forEach((ligne, index) => {
+                        if (stopLecture) return;
+                        let l = ligne.trim().toUpperCase();
+                        if (l.length < 3) return;
+                        if (l.includes("TOTAL") || l.includes("RESTE A PAYER") || l.includes("NOMBRE DE LIGNES")) { stopLecture = true; return; }
+
+                        const regexPrixFin = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                        const matchPrix = l.match(regexPrixFin);
+                        const regexMulti = /^(\d+)\s*[X*x]\s*[\d,.]+/;
+                        const regexPesee = /KG\s*[X*x]\s*[\d,.]+/;
+                        const matchCalcul = l.match(regexMulti) || l.match(regexPesee);
+
+                        if (matchCalcul) {
+                            const qte = l.match(regexMulti) ? parseInt(l.match(regexMulti)[1]) : 1;
+                            for (let i = 1; i <= 4; i++) {
+                                let nomCandidat = lignes[index - i] ? lignes[index - i].trim().toUpperCase() : "";
+                                if (nomCandidat.length > 2 && !nomCandidat.includes("PESÉE") && !nomCandidat.match(regexPrixFin)) {
+                                    const nomFinal = nettoyerNom(nomCandidat);
+                                    if (nomFinal.length > 2) {
+                                        const idx = res.findIndex((p) => p.nom === nomFinal);
+                                        if (idx !== -1) res[idx].qte = qte;
+                                        else res.push({ nom: nomFinal, qte: qte, dlc: '', congele: false });
+                                        break;
+                                    }
+                                }
+                            }
+                        } else if (matchPrix) {
+                            let nomBrut = l.replace(regexPrixFin, "").trim();
+                            const nomFinal = nettoyerNom(nomBrut);
+                            if (nomFinal.length > 2 && !res.some((p) => p.nom === nomFinal)) {
+                                res.push({ nom: nomFinal, qte: 1, dlc: '', congele: false });
+                            }
+                        }
+                    });
+
+                    setReceiptItems(res);
+                    await worker.terminate();
+                } catch (err) { console.error(err); } finally { setLoading(false); }
+            };
+
+            const saveReceiptToStock = async () => {
+                setLoading(true);
+                for (const item of receiptItems) {
+                    // On cherche si le produit existe déjà pour garder le rayon
+                    const existant = produits.find(p => p.nom.toUpperCase() === item.nom.toUpperCase());
+                    const nouveau = {
+                        id: Date.now() + Math.random(),
+                        nom: item.nom,
+                        zone: existant ? existant.zone : 'Alimentaire',
+                        rayon: existant ? existant.rayon : 'Autres',
+                        typeStock: 'unite',
+                        stock: item.qte,
+                        date: item.dlc,
+                        congele: item.congele ? 1 : 0,
+                        checked: 0
+                    };
+                    await syncWithServer(nouveau);
+                }
+                // Recharger le stock
+                window.location.reload();
+            };
+
+            // --- UI HELPERS ---
+            const checkDLC = (dateStr, congele) => {
+                if (!dateStr || congele) return { status: 'ok', msg: '' };
+                const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
+                if (diff < 0) return { status: 'expired', msg: 'PÉRIMÉ' };
+                if (diff <= 3) return { status: 'warning', msg: 'DLC PROCHE' };
+                return { status: 'ok', msg: '' };
+            };
+
+            const formatDateFR = (dateUS) => {
+                if (!dateUS) return '';
+                const parts = dateUS.split('-');
+                return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateUS;
+            };
+
+            const updateStock = (id, delta) => {
+                const nouveauxProduits = produits.map(p => {
+                    if (p.id !== id) return p;
+                    let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
+                    if (next <= 0) { 
+                        if(confirm(`Ajouter ${p.nom} à la liste de courses ?`)) {
+                            const up = {...p, stock: 0, checked: 0}; syncWithServer(up); return up;
+                        } else {
+                            fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
+                            return null;
+                        }
+                    }
+                    const updated = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
+                    syncWithServer(updated); return updated;
+                }).filter(p => p !== null);
+                setProduits(nouveauxProduits);
+            };
+
+            if (!isLoggedIn) return <Login onLogin={handleLoginSuccess} />;
+
+            return (
+                <div className="max-w-md mx-auto bg-gray-50 min-h-screen pb-32">
+                    {/* HEADER */}
+                    <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
+                            <div className="flex gap-2">
+                                <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">🧾 Ticket</button>
+                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">
+                                    {view === 'home' ? 'Courses' : 'Stock'}
+                                </button>
+                            </div>
+                        </div>
+                        {view === 'home' && (
+                            <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        )}
+                    </header>
+
+                    <main className="p-4">
+                        {/* VUE TICKET DE CAISSE */}
+                        {view === 'receipt' && (
+                            <div className="animate-up space-y-6">
+                                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 text-center">
+                                    <h2 className="font-black uppercase text-xs mb-4 text-gray-400">Scanner un ticket de caisse</h2>
+                                    <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="receipt-upload" className="hidden" />
+                                    <label htmlFor="receipt-upload" className="inline-block bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer shadow-lg active:scale-95 transition-all">
+                                        📷 Sélectionner Photo / PDF
+                                    </label>
+                                    {loading && <p className="mt-4 text-[10px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
+                                </div>
+
+                                {receiptItems.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center px-2">
+                                            <span className="text-[10px] font-black uppercase text-gray-400">Articles trouvés ({receiptItems.length})</span>
+                                            <span className="text-[10px] font-black text-blue-600">{magasinInfo.nom}</span>
+                                        </div>
+                                        {receiptItems.map((item, idx) => (
+                                            <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="font-bold text-xs uppercase text-gray-700 leading-tight w-2/3">{item.nom}</span>
+                                                    <span className="bg-gray-100 px-2 py-1 rounded-lg font-black text-[10px]">x{item.qte}</span>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[10px] font-bold outline-none border border-gray-100" 
+                                                        onChange={(e) => {
+                                                            const newItems = [...receiptItems];
+                                                            newItems[idx].dlc = e.target.value;
+                                                            setReceiptItems(newItems);
+                                                        }} />
+                                                    <button 
+                                                        onClick={() => {
+                                                            const newItems = [...receiptItems];
+                                                            newItems[idx].congele = !newItems[idx].congele;
+                                                            setReceiptItems(newItems);
+                                                        }}
+                                                        className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500' : 'bg-gray-100'}`}>❄️</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <button onClick={saveReceiptToStock} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase shadow-xl tracking-widest text-sm">
+                                            🚀 Ajouter tout au stock
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* VUE STOCK (HOME) */}
+                        {view === 'home' && (
+                            <div className="space-y-4">
+                                {Object.keys(STRUCTURE).map(zone => {
+                                    const zoneItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
+                                    if (zoneItems.length === 0) return null;
+                                    return (
+                                        <div key={zone}>
+                                            <h3 className="p-4 font-black text-xs uppercase italic text-gray-400 tracking-wider">{STRUCTURE[zone].icon} {zone}</h3>
+                                            {STRUCTURE[zone].rayons.map(ray => {
+                                                const rayItems = zoneItems.filter(p => p.rayon === ray.id);
+                                                if (rayItems.length === 0) return null;
+                                                return (
+                                                    <div key={ray.id} className="mb-4 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                                                        <div className="p-3 px-5 bg-gray-50/50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase flex justify-between">
+                                                            <span>{ray.icon} {ray.id}</span>
+                                                            <span>{rayItems.length}</span>
+                                                        </div>
+                                                        <div className="divide-y divide-gray-50">
+                                                            {rayItems.map(p => (
+                                                                <div key={p.id} className="p-4 flex justify-between items-center">
+                                                                    <div>
+                                                                        <p className="font-bold text-sm text-gray-800">{p.nom}</p>
                                                                         <div className="flex items-center gap-2">
-                                                                            <span className="text-[9px] text-gray-400 font-bold italic">{p.date ? '⌛ ' + formatDateFR(p.date) : '♻️ Sans date'}</span>
-                                                                            <button onClick={() => {
-                                                                                const updated = {...p, congele: p.congele == 1 ? 0 : 1};
-                                                                                setProduits(produits.map(i => i.id === p.id ? updated : i));
-                                                                                syncWithServer(updated);
-                                                                            }} className={`text-[10px] p-1 rounded font-black ${p.congele == 1 ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-200 text-gray-400'}`}>❄️</button>
+                                                                            <span className="text-[9px] text-gray-400 italic">{p.date ? formatDateFR(p.date) : 'Sans DLC'}</span>
+                                                                            {p.congele == 1 && <span className="text-[9px]">❄️</span>}
                                                                         </div>
-                                                                        <div className="flex gap-2">
-                                                                            <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-200 rounded-xl font-bold active:bg-gray-100 shadow-sm transition-transform active:scale-90">-</button>
-                                                                            <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-200 rounded-xl font-bold active:bg-gray-100 shadow-sm transition-transform active:scale-90">+</button>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">
+                                                                            {p.typeStock === 'pourcent' ? p.stock+'%' : 'Qté: '+p.stock}
+                                                                        </span>
+                                                                        <div className="flex gap-1">
+                                                                            <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-gray-50 rounded-lg font-bold border border-gray-100 shadow-sm">-</button>
+                                                                            <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-gray-50 rounded-lg font-bold border border-gray-100 shadow-sm">+</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            );
-                                                        })}
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="bg-white rounded-[2rem] border border-gray-200 shadow-sm divide-y divide-gray-50 overflow-hidden">
-                                {produits.filter(p => Number(p.stock) === 0 || p.checked == 1).length === 0 ? <p className="p-12 text-center text-gray-300 italic text-sm">Votre liste est vide.</p> :
-                                produits.filter(p => Number(p.stock) === 0 || p.checked == 1).map(p => (
-                                    <div key={p.id} className="flex items-center justify-between p-4 bg-white active:bg-gray-50">
-                                        <div className="flex items-center gap-4 px-2">
-                                            <input type="checkbox" checked={p.checked == 1} onChange={() => {
-                                                const updated = {...p, checked: p.checked == 1 ? 0 : 1};
-                                                setProduits(produits.map(i => i.id === p.id ? updated : i));
-                                                syncWithServer(updated);
-                                            }} className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
-                                            <div>
-                <p className={`font-bold text-sm tracking-tight ${p.checked == 1 ? 'line-through opacity-20' : 'text-gray-700'}`}>
-                    {p.nom}
-                </p>
-                <div className="flex gap-2 items-center">
-                    <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">{p.rayon}</p>
-                    {p.checked != 1 && (
-                        <span className="text-[8px] bg-blue-50 text-blue-500 px-1 rounded font-bold italic">Saisir DLC à l'achat ⌛</span>
-                    )}
-                </div>
-            </div>
+                                                );
+                                            })}
                                         </div>
-                                        <button onClick={() => {
-                                            fetch(`${API_URL}?action=delete_product&id=${p.id}`);
-                                            setProduits(produits.filter(i => i.id !== p.id));
-                                        }} className="text-gray-200 p-2 text-lg hover:text-red-300 transition-colors">✕</button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
-                            
-                            {/* BOUTON ACHETER EN BAS DE LA LISTE */}
-                            {produits.some(p => p.checked == 1) && (
-                                <button onClick={validerAchats} className="w-full bg-green-600 text-white p-6 rounded-[2rem] font-black uppercase shadow-xl animate-up tracking-widest">
-                                    🛒 Acheter (Remettre en stock)
-                                </button>
-                            )}
+                        )}
+
+                        {/* VUE COURSES (SHOPPING) */}
+                        {view === 'shopping' && (
+                            <div className="space-y-4">
+                                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                                    {produits.filter(p => Number(p.stock) === 0).length === 0 ? 
+                                        <p className="p-12 text-center text-gray-300 italic text-sm">Liste vide</p> :
+                                        produits.filter(p => Number(p.stock) === 0).map(p => (
+                                            <div key={p.id} className="flex items-center justify-between p-4 bg-white">
+                                                <div className="flex items-center gap-4">
+                                                    <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
+                                                    <div>
+                                                        <p className="font-bold text-sm text-gray-700">{p.nom}</p>
+                                                        <p className="text-[8px] text-gray-400 font-black uppercase">{p.rayon}</p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => {
+                                                    fetch(`${API_URL}?action=delete_product&id=${p.id}`);
+                                                    setProduits(produits.filter(i => i.id !== p.id));
+                                                }} className="text-gray-200 p-2">✕</button>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* MODALE AJOUT MANUEL */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
+                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up">
+                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px]">Nouvel Article</h2>
+                                <input type="text" placeholder="Nom..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 border-none outline-none font-bold" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                        {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
+                                    </select>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                        {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mb-6">
+                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                    <input type="number" placeholder="Qté" className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+                                </div>
+                                <button onClick={() => {
+                                    const nouveau = {...form, id: Date.now(), congele: form.congele ? 1 : 0, checked: 0};
+                                    setProduits([nouveau, ...produits]); syncWithServer(nouveau); setShowAddModal(false);
+                                }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black uppercase shadow-xl text-sm transition-all active:scale-95">Enregistrer</button>
+                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase text-center mt-4">Annuler</button>
+                            </div>
                         </div>
                     )}
-                </main>
 
-                {showAddModal && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-50 p-4">
-                        <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto shadow-2xl overflow-y-auto max-h-[85vh] animate-up border border-white/20">
-                            <h2 className="text-center font-black mb-8 uppercase text-gray-300 text-[10px] tracking-widest italic tracking-tighter">Nouvel Article</h2>
-                            <input type="text" placeholder="Nom du produit..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 border-none outline-none font-bold text-lg shadow-inner focus:ring-2 focus:ring-green-500 transition-all" value={form.nom} onChange={e => setForm({...form, nom: e.target.value})} />
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <select className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
-                                    {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
-                                </select>
-                                <select className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
-                                    {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl shadow-inner">
-                                <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>Quantité en %</button>
-                                <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black scale-105' : 'text-gray-400'}`}>Nombre d'unité</button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 mb-6">
-                                <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                {form.typeStock === 'unite' && <input type="number" placeholder="Qté" className="p-3 bg-white border border-gray-100 rounded-xl text-[10px] font-bold shadow-sm outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />}
-                            </div>
-                            <label className="flex items-center gap-4 mb-4 p-5 bg-blue-50/50 rounded-[1.5rem] cursor-pointer border-2 border-dashed border-blue-100 active:scale-95 transition-all">
-                                <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-600 rounded-lg shadow-sm border-none outline-none" />
-                                <span className="text-[10px] font-black text-blue-800 uppercase italic tracking-tighter">Placé au congélateur ❄️</span>
-                            </label>
-                            <label className="flex items-center gap-4 mb-8 p-5 bg-red-50/50 rounded-[1.5rem] cursor-pointer border-2 border-dashed border-red-100 active:scale-95 transition-all">
-                                <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm border-none outline-none" />
-                                <span className="text-[10px] font-black text-red-700 uppercase italic tracking-tighter leading-tight">Ajouter directement dans la liste de course 🛒</span>
-                            </label>
-                            <div className="space-y-3">
-                                <button onClick={() => {
-                                    const icon = STRUCTURE[form.zone].rayons.find(r => r.id === form.rayon).icon;
-                                    const nouvelleQte = form.directShopping ? 0 : (form.typeStock === 'pourcent' ? 100 : Number(form.stock));
-                                    let updatedProduit;
-                                    const indexExistant = produits.findIndex(p => p.nom.toLowerCase() === form.nom.toLowerCase() && p.date === form.date && p.rayon === form.rayon && p.typeStock === 'unite' && form.typeStock === 'unite');
-                                    
-                                    if (indexExistant !== -1 && !form.directShopping) {
-                                        const nouveauStock = [...produits];
-                                        nouveauStock[indexExistant].stock = Number(nouveauStock[indexExistant].stock) + nouvelleQte;
-                                        updatedProduit = nouveauStock[indexExistant];
-                                        setProduits(nouveauStock);
-                                    } else {
-                                        updatedProduit = { ...form, id: Date.now(), icon, stock: nouvelleQte, checked: 0 };
-                                        setProduits([updatedProduit, ...produits]);
-                                    }
-                                    syncWithServer(updatedProduit);
-                                    setShowAddModal(false);
-                                    setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false });
-                                }} className="w-full bg-green-600 text-white p-5 rounded-[2rem] font-black shadow-xl uppercase tracking-[0.2em] text-sm active:scale-95 transition-all">Enregistrer</button>
-                                <button onClick={() => { setShowAddModal(false); setForm({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'pourcent', stock: 1, date: '', directShopping: false, congele: false }); }} className="w-full text-gray-300 text-[10px] font-black uppercase tracking-widest text-center py-2 active:text-red-400 transition-colors">Annuler</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {confirmModal.show && (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6">
-        <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up text-center border-4 border-green-500">
-            <div className="text-4xl mb-4">🛒</div>
-            <h3 className="font-black uppercase text-sm mb-2">LISTE DE COURSES</h3>
-            <p className="text-gray-500 text-xs mb-8">Ajouter <b>{confirmModal.produit?.nom}</b> à la liste ?</p>
-            
-            <div className="flex gap-3">
-                {/* BOUTON NON : Maintenant il supprime le produit */}
-                <button onClick={() => refuserAjoutEtSupprimer(confirmModal.produit)}
-                    className="flex-1 bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]"
-                >
-                    NON
-                </button>
-
-                {/* BOUTON OUI : Garde l'ancien fonctionnement */}
-                <button 
-                    onClick={confirmerAjoutCourses}
-                    className="flex-1 bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg"
-                >
-                    OUI
-                </button>
-            </div>
-        </div>
-    </div>
-)}
-                {showPurchaseModal && (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[120] p-6">
-        <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-up border-4 border-green-500">
-            <div className="text-center mb-6">
-                <div className="text-4xl mb-2">🛍️</div>
-                <h2 className="font-black uppercase text-lg italic text-gray-800">
-                    {purchaseQueue[currentPurchaseIdx]?.nom}
-                </h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mise à jour du stock</p>
-            </div>
-
-            <div className="space-y-5">
-                {/* Quantité : Seulement si le produit est géré en Unité */}
-                {purchaseQueue[currentPurchaseIdx]?.typeStock === 'unite' && (
-                    <div>
-                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2 italic">Quantité achetée</label>
-                        <input 
-                            type="number" 
-                            className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-green-500 transition-all"
-                            value={form.stock}
-                            onChange={e => setForm({...form, stock: Number(e.target.value)})}
-                        />
-                    </div>
-                )}
-
-                {/* Date : Avec calendrier natif */}
-                <div>
-                    <label className="text-[10px] font-black uppercase text-gray-400 ml-2 italic">Nouvelle DLC (Calendrier)</label>
-                    <input 
-                        type="date" 
-                        className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-green-500 transition-all"
-                        value={form.date}
-                        onChange={e => setForm({...form, date: e.target.value})}
-                    />
+                    {/* BARRE DE NAVIGATION */}
+                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md border border-gray-100 p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40">
+                        <button onClick={() => setView('home')} className={`p-4 transition-all ${view === 'home' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🏠</button>
+                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
+                        <button onClick={() => setView('shopping')} className={`p-4 transition-all ${view === 'shopping' ? 'text-green-600 scale-125' : 'text-gray-200'}`}>🛒</button>
+                    </nav>
                 </div>
+            );
+        };
 
-                <button 
-                    onClick={enregistrerEtapeAchat}
-                    className="w-full bg-green-600 text-white p-5 rounded-2xl font-black uppercase shadow-lg active:scale-95 transition-all mt-4"
-                >
-                    {currentPurchaseIdx < purchaseQueue.length - 1 ? "Produit suivant ➔" : "Terminer et ranger ✅"}
-                </button>
-            </div>
-        </div>
-    </div>
-)}
-
-                <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md border border-gray-100 p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40">
-                    <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view === 'home' ? 'text-green-600 scale-125' : 'text-gray-200 opacity-40'}`}>🏠</button>
-                    <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter">＋</button>
-                    <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view === 'shopping' ? 'text-green-600 scale-125' : 'text-gray-200 opacity-40'}`}>🛒</button>
-                </nav>
-            </div>
-        );
-    };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
