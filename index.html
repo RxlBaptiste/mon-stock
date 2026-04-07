@@ -289,7 +289,11 @@ const isNoiseLine = (line) => {
         /PESEE MANUELLE/,
  /PESÉE MANUELLE/,
  /KG\s*X/,
- /€\/KG/
+ /€\/KG/,
+        /PESEE MANUELLE/,
+ /PESÉE MANUELLE/,
+ /BON D['’]ACHAT/,
+ /NO\s+[X*]+/
     ];
 
     if (noisePatterns.some(rx => rx.test(l))) return true;
@@ -357,6 +361,47 @@ const extractTicketArticleCount = (text) => {
     return null;
 };
 
+
+    const isSectionHeader = (line) => {
+    if (!line) return false;
+
+    const l = normalizeText(line).toUpperCase().trim();
+
+    const knownHeaders = [
+        "FRUITS",
+        "LEGUMES",
+        "PANIFICATION",
+        "PATES",
+        "PLATS CUISINES",
+        "PETITE PARAPHARMACIE",
+        "JUS ET NECTARS",
+        "FROMAGE COUPE EMBALLE",
+        "CONSERVES DE LEGUMES",
+        "ULTRA FRAIS",
+        "VOLAILLES STANDARD",
+        "TRAITEUR LS UVCI",
+        "REDUCTIONS IMMEDIATES",
+        "BON DE REDUCTION"
+    ];
+
+    if (knownHeaders.includes(l)) return true;
+
+    // souvent les titres rayon sont en majuscules, courts, sans prix
+    const onlyLettersSpaces = /^[A-ZÀ-ÖØ-öø-ÿ\s'&\-]+$/.test(l);
+    const wordCount = l.split(/\s+/).filter(Boolean).length;
+
+    if (
+        onlyLettersSpaces &&
+        wordCount <= 4 &&
+        l.length >= 4 &&
+        !isPriceLine(l)
+    ) {
+        return true;
+    }
+
+    return false;
+};
+
             
 const parseReceiptLines = (text) => {
     const store = detectStoreType(text);
@@ -414,6 +459,11 @@ const parseReceiptLines = (text) => {
         const prevUpper = prev.toUpperCase();
         const nextUpper = next.toUpperCase();
 
+        if (isSectionHeader(currentUpper)) {
+    pendingName = null;
+    continue;
+}
+        
         // Ligne multiplicateur : 2 X 0,85
         const multiQty = extractQuantityFromMulti(currentUpper);
         if (multiQty) {
@@ -455,31 +505,16 @@ const parseReceiptLines = (text) => {
         }
 
         // Ligne article potentielle sans prix
-        if (!isNoiseLine(currentUpper)) {
-            const cleaned = cleanArticleName(currentUpper);
+        if (
+    !isNoiseLine(currentUpper) &&
+    !isSectionHeader(currentUpper)
+) {
+    const cleaned = cleanArticleName(currentUpper);
 
-            // Heuristique par magasin
-            if (store === "hyperu") {
-                // Hyper U a souvent des lignes article assez courtes suivies d'un prix
-                if (cleaned.length >= 3) {
-                    if (isPriceLine(nextUpper) || /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(nextUpper)) {
-                        pendingName = currentUpper;
-                    } else {
-                        // on garde en attente, parfois prix arrive 2 lignes après
-                        pendingName = currentUpper;
-                    }
-                }
-            } else if (store === "leclerc") {
-                // Leclerc : souvent nom produit puis ligne prix ou ligne promo
-                if (cleaned.length >= 3) {
-                    pendingName = currentUpper;
-                }
-            } else {
-                if (cleaned.length >= 3) {
-                    pendingName = currentUpper;
-                }
-            }
-        }
+    if (cleaned.length >= 3) {
+        pendingName = currentUpper;
+    }
+}
     }
 
     return results;
