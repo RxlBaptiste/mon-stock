@@ -163,12 +163,30 @@
 
 
 
-            const normalizeText = (str) => {
-    return (str || "")
-        .replace(/[|]/g, "I")
-        .replace(/[€]/g, "€")
-        .replace(/\s+/g, " ")
+            const normalizeOCRPrice = (raw) => {
+    if (!raw) return null;
+
+    let s = String(raw)
+        .toUpperCase()
+        .replace(/[O]/g, "0")
+        .replace(/[IIL]/g, "1")
+        .replace(/\//g, "7")
+        .replace(/\s+/g, "")
         .trim();
+
+    if (/^\d+[.,]\d{2}$/.test(s)) {
+        return parseFloat(s.replace(",", "."));
+    }
+
+    if (/^\d{3}$/.test(s)) {
+        return parseFloat(s.slice(0, 1) + "." + s.slice(1));
+    }
+
+    if (/^\d{4}$/.test(s)) {
+        return parseFloat(s.slice(0, 2) + "." + s.slice(2));
+    }
+
+    return null;
 };
 
 const cleanArticleName = (str) => {
@@ -443,7 +461,7 @@ const extractQuantityInfo = (line) => {
     if (!line) return null;
     const l = normalizeText(line).toUpperCase();
 
-    const m = l.match(/(\d+)\s*[Xx*]\s*(\d+[.,]\d{2})\s*(?:€|EUR)?(?:\s+(\d+[.,]\d{2}))?\s*$/i);
+    const m = l.match(/(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i);
     if (!m) return null;
 
     return {
@@ -456,7 +474,7 @@ const extractQuantityInfo = (line) => {
 const stripTrailingQuantitySegment = (line) => {
     if (!line) return "";
     return normalizeText(line)
-        .replace(/(\d+)\s*[Xx*]\s*(\d+[.,]\d{2})\s*(?:€|EUR)?(?:\s+(\d+[.,]\d{2}))?\s*$/i, "")
+        .replace(/(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i, "")
         .trim();
 };
             
