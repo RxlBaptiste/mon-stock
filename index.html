@@ -50,7 +50,6 @@
             const [produits, setProduits] = useState([]);
             const [view, setView] = useState("home");
             const [loading, setLoading] = useState(false);
-            const [showAddModal, setShowAddModal] = useState(false);
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState("");
             const [openSections, setOpenSections] = useState({});
@@ -82,11 +81,10 @@
                         const arrayBuffer = await file.arrayBuffer();
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                         const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 2.5 });
                         const canvas = document.createElement("canvas");
-                        const context = canvas.getContext("2d");
+                        const viewport = page.getViewport({ scale: 2.5 });
                         canvas.height = viewport.height; canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
                         source = canvas.toDataURL("image/png");
                     } else { source = URL.createObjectURL(file); }
 
@@ -95,63 +93,55 @@
                     const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
                     
-                    const isHyperU = text.includes("VENTE");
-                    let lastValidName = "";
-                    let startReading = false;
+                    let stopScan = false;
 
                     for (let i = 0; i < lignes.length; i++) {
+                        if (stopScan) break;
                         let l = lignes[i];
                         if (l.length < 3) continue;
 
-                        // Gestion des bornes de début/fin
-                        if (isHyperU) {
-                            if (l.includes("VENTE")) { startReading = true; continue; }
-                            if (l.includes("NOMBRE DE LIGNES")) break;
-                        } else {
-                            if (l === "€" || l === "EUR" || l.endsWith(" €")) { startReading = true; continue; }
-                            if (l.startsWith("TOTAL")) break;
-                        }
-
-                        if (!startReading) continue;
-
-                        const regexPrix = /(\d+[\.,]\d{2})$/; // Fin de ligne avec prix
-                        const regexMulti = /^(\d+)\s*[X]\s*[\d,.]+€?$/; // Ligne "2 X 0.85"
-
-                        // 1. Si c'est une ligne de calcul (Leclerc)
-                        if (regexMulti.test(l)) {
-                            const qte = parseInt(l.match(regexMulti)[1]);
-                            if (res.length > 0) res[res.length - 1].qte = qte;
+                        // Arret universel
+                        if (l.startsWith("TOTAL") || l.includes("ARTICLES") || l.includes("NOMBRE DE LIGNES") || l.includes("RESTE A PAYER")) {
+                            stopScan = true;
                             continue;
                         }
 
-                        // 2. Si c'est une ligne de prix
-                        if (regexPrix.test(l)) {
-                            let namePart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                            
-                            // Si la ligne contient un prix mais pas de nom (nom au dessus)
-                            if (namePart.length < 3) {
-                                if (lastValidName) {
-                                    res.push({ nom: lastValidName, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
-                                    lastValidName = "";
-                                }
-                            } else {
-                                // Nom et prix sur la même ligne (Leclerc)
-                                let nomFinal = namePart.split(',')[0].trim();
-                                if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
-                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
+                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                        const regexMulti = /(\d+)\s*[X]\s*[\d,.]+€?/;
+
+                        // On cherche soit un prix soit un multiplicateur (Leclerc)
+                        if (regexPrix.test(l) || regexMulti.test(l)) {
+                            let qte = 1;
+                            let matchMulti = l.match(regexMulti);
+                            if (matchMulti) qte = parseInt(matchMulti[1]);
+
+                            // On remonte pour chercher le nom
+                            for (let j = 1; j <= 6; j++) {
+                                let nomC = lignes[i - j];
+                                if (!nomC || nomC.length < 3) continue;
+
+                                // On ignore tout ce qui ressemble à des chiffres techniques ou des lignes de pesée
+                                if (!nomC.match(regexPrix) && 
+                                    !nomC.match(regexMulti) && 
+                                    !nomC.includes("PESÉE") && 
+                                    !nomC.includes("KG") && 
+                                    !nomC.includes("---") &&
+                                    !nomC.includes("TVA") &&
+                                    !/^\d+$/.test(nomC.replace(/\s/g, ""))) {
+                                    
+                                    let cleanName = nomC.replace(/[*_]/g, "").split(',')[0].trim();
+                                    
+                                    if (cleanName.length > 2 && !cleanName.includes("MONTANT") && !cleanName.includes("CB ")) {
+                                        const existe = res.findIndex(p => p.nom === cleanName);
+                                        if (existe !== -1) {
+                                            if (matchMulti) res[existe].qte = qte;
+                                        } else {
+                                            res.push({ nom: cleanName, qte: qte, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
+                                        }
+                                        break;
+                                    }
                                 }
                             }
-                            continue;
-                        }
-
-                        // 3. C'est peut-être un nom de produit seul (Hyper U pesée ou Leclerc prix décalé)
-                        if (l.length > 3 && 
-                            !l.includes("PESÉE") && 
-                            !l.includes("KG") && 
-                            !l.includes("---") && 
-                            !l.includes("TVA") &&
-                            !/^\d+$/.test(l.replace(/\s/g, ""))) {
-                            lastValidName = l.split(',')[0].trim();
                         }
                     }
 
@@ -197,7 +187,7 @@
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-32">
                     <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm flex justify-between items-center">
-                        <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
+                        <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGE</h1>
                         <div className="flex gap-2">
                             <button onClick={() => setView("receipt")} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">🧾 Ticket</button>
                             <button onClick={() => setView(view === "home" ? "shopping" : "home")} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">{view === "home" ? "Courses" : "Stock"}</button>
@@ -210,7 +200,7 @@
                                 <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-300">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
                                     <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg active:scale-95">📷 Charger Photo / PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse">Analyse en cours...</p>}
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
@@ -251,13 +241,13 @@
                                                     <span>{rItems.length} {openSections[ray.id] ? "▲" : "▼"}</span>
                                                 </button>
                                                 {openSections[ray.id] && rItems.map(p => (
-                                                    <div key={p.id} className="p-4 flex justify-between items-center border-t border-gray-50">
+                                                    <div key={p.id} className={`p-4 flex justify-between items-center border-t border-gray-50`}>
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
                                                             <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.congele == 1 ? "❄️ CONGELÉ" : p.date || "SANS DATE"}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1">
-                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white border-blue-600 shadow-inner" : "bg-white text-gray-200"}`}>❄️</button>
+                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white" : "text-gray-200"}`}>❄️</button>
                                                             <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">-</button>
                                                             <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">+</button>
                                                         </div>
