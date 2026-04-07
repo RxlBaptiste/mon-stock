@@ -1108,19 +1108,35 @@ setReceiptStats({
                                     <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
-                                        {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
-                                    </select>
-                                    <select
-    className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-    value={form.rayon}
-    onChange={e => setForm({
-        ...form,
-        rayon: e.target.value,
-        ...(e.target.value !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
-    })}
->
-                                </div>
+    <select
+        className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+        value={form.zone}
+        onChange={e => setForm({
+            ...form,
+            zone: e.target.value,
+            rayon: STRUCTURE[e.target.value].rayons[0].id,
+            ...(STRUCTURE[e.target.value].rayons[0].id !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
+        })}
+    >
+        {Object.keys(STRUCTURE).map(z => (
+            <option key={z} value={z}>{z}</option>
+        ))}
+    </select>
+
+    <select
+        className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+        value={form.rayon}
+        onChange={e => setForm({
+            ...form,
+            rayon: e.target.value,
+            ...(e.target.value !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
+        })}
+    >
+        {STRUCTURE[form.zone].rayons.map(r => (
+            <option key={r.id} value={r.id}>{r.id}</option>
+        ))}
+    </select>
+</div>
                                 <div className="mb-6 space-y-3">
     {form.rayon === "Fruits et Légumes" ? (
         <div className="space-y-3">
