@@ -30,12 +30,6 @@
         const { useState, useEffect, useRef } = React;
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
-        const FRUIT_LIFESPAN = {
-            "FRAISE": 2, "FRAMBOISE": 2, "MURE": 2, "MYRTILLE": 3, "SALADE": 3, "CHAMPIGNON": 3,
-            "POIRE": 7, "TOMATE": 7, "BANANE": 5, "AVOCAT": 4, "POMME": 21, "ORANGE": 14, "CITRON": 20,
-            "POMME DE TERRE": 30, "OIGNON": 30, "AIL": 60, "CAROTTE": 20
-        };
-
         const STRUCTURE = {
             Alimentaire: { icon: "🧺", rayons: [
                 { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
@@ -60,7 +54,7 @@
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState("");
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: "", zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite", stock: 1, date: "", congele: false, maturite: "" });
+            const [form, setForm] = useState({ nom: "", zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite", stock: 1, date: "", congele: false });
             const [receiptItems, setReceiptItems] = useState([]);
             const currentUser = localStorage.getItem("stock_user") || "baptiste";
 
@@ -71,20 +65,6 @@
                     .then(res => res.json())
                     .then(data => setProduits(Array.isArray(data) ? data : []))
                     .catch(() => setProduits([]));
-            };
-
-            const formatFR = (dateStr) => {
-                if (!dateStr || !dateStr.includes("-")) return dateStr || "SANS DLC";
-                const [y, m, d] = dateStr.split("-");
-                return `${d}-${m}-${y}`;
-            };
-
-            const checkDLCStatus = (p) => {
-                if (p.congele == 1) return "frozen-style";
-                if (!p.date) return "";
-                const diff = (new Date(p.date) - new Date()) / (1000 * 3600 * 24);
-                if (diff <= 3) return "warning-dlc";
-                return "";
             };
 
             const syncWithServer = async (p) => {
@@ -103,72 +83,74 @@
                         const arrayBuffer = await file.arrayBuffer();
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                         const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 2.5 });
                         const canvas = document.createElement("canvas");
-                        const context = canvas.getContext("2d");
+                        const viewport = page.getViewport({ scale: 2.5 });
                         canvas.height = viewport.height; canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
                         source = canvas.toDataURL("image/png");
                     } else { source = URL.createObjectURL(file); }
 
                     const worker = await Tesseract.createWorker("fra");
-                    await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
                     const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
-
-                    // --- DETECTION DU MAGASIN ---
-                    const isHyperU = text.toUpperCase().includes("VENTE");
-                    let startIdx = -1;
-                    let endIdx = lignes.length;
+                    
+                    const isHyperU = text.includes("VENTE");
 
                     if (isHyperU) {
-                        // Filtre Hyper U
-                        startIdx = lignes.findIndex(l => l.includes("VENTE"));
-                        const finalIdx = lignes.findIndex(l => l.includes("NOMBRE DE LIGNES"));
-                        if (finalIdx !== -1) endIdx = finalIdx;
-                    } else {
-                        // Filtre Leclerc
-                        startIdx = lignes.findIndex(l => l === "€" || l.endsWith(" €"));
-                        const finalIdx = lignes.findIndex(l => l.startsWith("TOTAL"));
-                        if (finalIdx !== -1) endIdx = finalIdx;
-                    }
+                        // --- LOGIQUE HYPER U ---
+                        let start = lignes.findIndex(l => l.includes("VENTE"));
+                        let end = lignes.findIndex(l => l.includes("NOMBRE DE LIGNES"));
+                        if (end === -1) end = lignes.length;
 
-                    // --- TRAITEMENT DES LIGNES FILTRÉES ---
-                    for (let i = startIdx + 1; i < endIdx; i++) {
-                        let l = lignes[i];
-                        if (l.length < 3) continue;
-
-                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const regexMulti = /^(\d+)\s*[X*]\s*[\d,.]+/;
-
-                        if (l.match(regexPrix) || l.match(regexMulti)) {
-                            const qte = l.match(regexMulti) ? parseInt(l.match(regexMulti)[1]) : 1;
-                            
-                            // Remonter pour trouver le nom (jusqu'à 5 lignes pour la pesée U)
-                            for (let j = 1; j <= 5; j++) {
-                                let nomCandidat = lignes[i - j];
-                                if (!nomCandidat) break;
-
-                                // On ignore les lignes techniques
-                                if (nomCandidat.length > 3 && 
-                                    !nomCandidat.match(regexPrix) && 
-                                    !nomCandidat.match(regexMulti) &&
-                                    !nomCandidat.includes("PESÉE") && 
-                                    !nomCandidat.includes("KG") &&
-                                    !nomCandidat.includes("---")) {
-                                    
-                                    let nomFinal = nomCandidat.replace(/[*_]/g, "").split(",")[0].trim();
-                                    if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
-                                        const existe = res.findIndex(p => p.nom === nomFinal);
-                                        if (existe !== -1) { if(qte > 1) res[existe].qte = qte; }
-                                        else res.push({ nom: nomFinal, qte: qte, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
+                        for (let i = start + 1; i < end; i++) {
+                            let l = lignes[i];
+                            const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                            if (regexPrix.test(l)) {
+                                // On remonte pour trouver le nom en ignorant les lignes de poids
+                                for (let j = 1; j <= 6; j++) {
+                                    let nomC = lignes[i - j];
+                                    if (!nomC || nomC.length < 3) continue;
+                                    if (!nomC.match(regexPrix) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---")) {
+                                        let cleanName = nomC.replace(/[*_]/g, "").split(',')[0].trim();
+                                        if (cleanName.length > 2 && !cleanName.includes("MONTANT")) {
+                                            res.push({ nom: cleanName, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
+                                        }
                                         break;
                                     }
                                 }
                             }
                         }
+                    } else {
+                        // --- LOGIQUE LECLERC ---
+                        // Début après le symbole € isolé, fin à TOTAL
+                        let start = lignes.findIndex(l => l === "€" || l === "EUR");
+                        let end = lignes.findIndex(l => l.startsWith("TOTAL"));
+                        if (end === -1) end = lignes.length;
+
+                        for (let i = start + 1; i < end; i++) {
+                            let l = lignes[i];
+                            // Ignorer les très longs nombres (code barres OCR mal lu)
+                            if (l.replace(/\s/g, "").length > 15 && /^\d+$/.test(l.replace(/\s/g, ""))) continue;
+
+                            const regexPrix = /(\d+[\.,]\d{2})$/;
+                            const regexMultiLeclerc = /^(\d+)\s*[X]\s*[\d,.]+€?$/; // Détecte "2 X 0.85€"
+
+                            if (l.match(regexMultiLeclerc)) {
+                                const qte = parseInt(l.match(regexMultiLeclerc)[1]);
+                                if (res.length > 0) res[res.length - 1].qte = qte;
+                            } else if (regexPrix.test(l)) {
+                                let name = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
+                                // Si le nom est sur la ligne d'avant (car prix décalé)
+                                if (name.length < 3) name = lignes[i-1].replace(/[*_]/g, "").trim();
+                                
+                                if (name.length > 2 && !name.includes("TOTAL") && !name.includes("ARTICLES")) {
+                                    res.push({ nom: name, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Boulangerie", typeStock: "unite" });
+                                }
+                            }
+                        }
                     }
+
                     setReceiptItems(res); await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
             };
@@ -182,21 +164,13 @@
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
-                    let next = p.typeStock === "pourcent" ? Number(p.stock) + delta * 25 : Number(p.stock) + delta;
+                    let step = p.typeStock === "pourcent" ? 25 : 1;
+                    let next = Number(p.stock) + (delta * step);
                     if (next <= 0 && delta < 0) { setConfirmDelete({ show: true, produit: p }); return p; }
                     const u = { ...p, stock: Math.max(0, p.typeStock === "pourcent" ? Math.min(100, next) : next) };
                     syncWithServer(u); return u;
                 });
                 setProduits(newP);
-            };
-
-            const handleMaturity = (nom, etatIndex) => {
-                const baseLife = FRUIT_LIFESPAN[nom.toUpperCase()] || 5;
-                const coeffs = [1.5, 1.0, 0.5];
-                const etats = ["Pas mûr", "Bientôt mûr", "Mûr"];
-                const d = new Date();
-                d.setDate(d.getDate() + Math.round(baseLife * coeffs[etatIndex]));
-                setForm({ ...form, date: d.toISOString().split('T')[0], maturite: etats[etatIndex] });
             };
 
             if (!isLoggedIn) return (
@@ -218,15 +192,12 @@
 
             return (
                 <div className="max-w-md mx-auto min-h-screen pb-32">
-                    <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGE</h1>
-                            <div className="flex gap-2">
-                                <button onClick={() => setView("receipt")} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">🧾 Ticket</button>
-                                <button onClick={() => setView(view === "home" ? "shopping" : "home")} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">{view === "home" ? "Courses" : "Stock"}</button>
-                            </div>
+                    <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm flex justify-between items-center">
+                        <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
+                        <div className="flex gap-2">
+                            <button onClick={() => setView("receipt")} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">🧾 Ticket</button>
+                            <button onClick={() => setView(view === "home" ? "shopping" : "home")} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">{view === "home" ? "Courses" : "Stock"}</button>
                         </div>
-                        {view === "home" && <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />}
                     </header>
 
                     <main className="p-4">
@@ -239,18 +210,21 @@
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-                                        <span className="font-black text-xs uppercase text-gray-700 leading-tight block">{item.nom}</span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">{item.nom}</span>
+                                            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
+                                                <span className="px-2 font-black text-xs">x{item.qte}</span>
+                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.dlc} onChange={(e) => { const n = [...receiptItems]; n[idx].dlc = e.target.value; setReceiptItems(n); }} />
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl text-lg ${item.congele ? "bg-blue-500 text-white shadow-inner" : "bg-white border text-gray-200"}`}>❄️</button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
+                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
                                         </div>
                                     </div>
                                 ))}
-                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:'unite',stock:i.qte,date:i.dlc,congele:i.congele?1:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95">Tout Ajouter au Stock 🚀</button>}
+                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:'unite',stock:i.qte,date:"",congele:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95">Tout Ajouter au Stock 🚀</button>}
                             </div>
                         )}
 
@@ -273,13 +247,13 @@
                                                     <span>{rItems.length} {openSections[ray.id] ? "▲" : "▼"}</span>
                                                 </button>
                                                 {openSections[ray.id] && rItems.map(p => (
-                                                    <div key={p.id} className={`p-4 flex justify-between items-center border-t border-gray-50 ${checkDLCStatus(p)}`}>
+                                                    <div key={p.id} className="p-4 flex justify-between items-center border-t border-gray-50">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
-                                                            <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.congele == 1 ? "❄️ CONGELÉ" : formatFR(p.date)}</span>
+                                                            <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.congele == 1 ? "❄️ CONGELÉ" : p.date || "SANS DATE"}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1">
-                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white border-blue-600 shadow-inner" : "bg-white text-gray-200"}`}>❄️</button>
+                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white" : "text-gray-200"}`}>❄️</button>
                                                             <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">-</button>
                                                             <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">+</button>
                                                         </div>
@@ -291,62 +265,11 @@
                                 </div>
                             );
                         })}
-
-                        {view === "shopping" && (
-                            <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
-                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-30">Liste vide</p> :
-                                    produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
-                                            <div className="flex items-center gap-4"><input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => updateStock(p.id, 1)} /><span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span></div>
-                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 text-xl">✕</button>
-                                        </div>
-                                    ))
-                                }
-                            </div>
-                        )}
                     </main>
-
-                    {showAddModal && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[60] p-4">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
-                                <input type="text" placeholder="NOM..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>{STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
-                                </div>
-                                <div className="mb-6">
-                                    {form.rayon === "Fruits et Légumes" ? (
-                                        <div className="space-y-2">
-                                            <div className="flex gap-1">{["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => (<button key={label} onClick={() => handleMaturity(form.nom, idx)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${form.maturite === (idx===0?"Pas mûr":idx===1?"Bientôt mûr":"Mûr") ? 'bg-orange-500 border-orange-600 text-white' : 'bg-gray-50 text-gray-400'}`}>{label}</button>))}</div>
-                                            {form.date && <p className="text-center text-[10px] font-black text-orange-600 italic tracking-tighter uppercase">Prévu le : {formatFR(form.date)}</p>}
-                                        </div>
-                                    ) : (
-                                        <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    )}
-                                </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
-                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {confirmDelete.show && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6 text-center">
-                            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up">
-                                <h3 className="font-black uppercase text-sm mb-2 text-gray-800 tracking-tighter">Stock épuisé !</h3>
-                                <p className="text-gray-400 text-[9px] mb-8 uppercase font-bold">Ajouter {confirmDelete.produit?.nom} à la liste ?</p>
-                                <div className="flex flex-col gap-3">
-                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all shadow-md">En courses 🛒</button>
-                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Supprimer</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView("home")} className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}>🏠</button>
-                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
+                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
                         <button onClick={() => setView("shopping")} className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}>🛒</button>
                     </nav>
                 </div>
