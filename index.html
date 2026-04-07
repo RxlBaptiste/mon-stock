@@ -510,6 +510,7 @@ const parseReceiptLines = (text) => {
     for (let i = 0; i < lines.length; i++) {
         const current = lines[i];
         const currentUpper = current.toUpperCase();
+        console.log("LINE:", currentUpper);
 
         if (isNoiseLine(currentUpper) || isWeightedDetailLine(currentUpper)) {
             continue;
@@ -523,6 +524,15 @@ const parseReceiptLines = (text) => {
         }
 
         const qtyInfo = extractQuantityInfo(currentUpper);
+        if (qtyInfo) {
+    console.log("QTY LINE DETECTED:", {
+        line: currentUpper,
+        qtyInfo,
+        pendingName,
+        lastProductIndex,
+        lastProductTotalPrice
+    });
+}
 
         // CAS 1 : ligne avec quantité à la fin, parfois fusionnée avec le produit
         if (qtyInfo) {
@@ -583,6 +593,11 @@ const parseReceiptLines = (text) => {
                 .trim();
 
             const totalPrice = extractTrailingPrice(currentUpper);
+            console.log("PRICE LINE:", {
+    line: currentUpper,
+    candidate,
+    totalPrice
+});
 
             if (
                 cleanArticleName(candidate).length >= 3 &&
@@ -679,6 +694,12 @@ setReceiptStats({
 const itemsText = truncateReceiptForItems(rawText);
 
 const items = parseReceiptLines(itemsText);
+        console.log("RAW OCR TEXT PDF:");
+console.log(rawText);
+console.log("ITEMS TEXT PDF:");
+console.log(itemsText);
+
+            
 const ticketQty = extractTicketArticleCount(rawText);
 
 setReceiptItems(items);
@@ -701,6 +722,12 @@ setReceiptStats({
 const itemsText = truncateReceiptForItems(rawText);
 
 const items = parseReceiptLines(itemsText);
+console.log("RAW OCR TEXT IMAGE:");
+console.log(rawText);
+console.log("ITEMS TEXT IMAGE:");
+console.log(itemsText);
+
+            
 const ticketQty = extractTicketArticleCount(rawText);
 
 setReceiptItems(items);
