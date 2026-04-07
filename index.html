@@ -159,86 +159,89 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 setLoading(true);
+                setReceiptItems([]);
                 try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    const page = await pdf.getPage(1);
-                    const viewport = page.getViewport({ scale: 2.5 });
-                    const canvas = document.createElement("canvas");
-                    const context = canvas.getContext("2d");
-                    canvas.height = viewport.height; canvas.width = viewport.width;
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
-                    const source = canvas.toDataURL("image/png");
+                    let source = "";
+                    if (file.type === "application/pdf") {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        const page = await pdf.getPage(1);
+                        const viewport = page.getViewport({ scale: 2.5 });
+                        const canvas = document.createElement("canvas");
+                        const context = canvas.getContext("2d");
+                        canvas.height = viewport.height; canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        source = canvas.toDataURL("image/png");
+                    } else { source = URL.createObjectURL(file); }
 
                     const worker = await Tesseract.createWorker("fra");
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
-                    
-                    const lignesBrutes = text.split("\n").map(l => l.trim());
+                    const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
                     
-                    // --- LOGIQUE FILTRE MAGASIN ---
-                    const textComplet = text.toUpperCase();
-                    let lignesAInscrire = [];
+                    const isHyperU = text.toUpperCase().includes("VENTE");
+                    let startReading = false;
 
-                    if (textComplet.includes("VENTE") && textComplet.includes("NOMBRE DE LIGNES")) {
-                        // FILTRE HYPER U : Entre "***VENTE***" et "Nombre de lignes"
-                        let debut = lignesBrutes.findIndex(l => l.toUpperCase().includes("VENTE"));
-                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().includes("NOMBRE DE LIGNES"));
-                        lignesAInscrire = lignesBrutes.slice(debut + 1, fin);
-                    } else if (textComplet.includes("TOTAL")) {
-                        // FILTRE LECLERC : Entre le symbole "€" et "Total"
-                        let debut = lignesBrutes.findIndex(l => l.includes("€") || l.toUpperCase().includes("EUR"));
-                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().startsWith("TOTAL"));
-                        lignesAInscrire = lignesBrutes.slice(debut + 1, fin);
-                    } else {
-                        lignesAInscrire = lignesBrutes;
-                    }
+                    for (let i = 0; i < lignes.length; i++) {
+                        let l = lignes[i];
+                        if (l.length < 3) continue;
 
-                    const nettoyer = (n) => {
-                        const d = n.search(/\d/);
-                        let p = d !== -1 ? n.substring(0, d) : n;
-                        p = p.replace(/[*_]/g, "").trim();
-                        while (p.endsWith(".") || p.endsWith(",")) p = p.slice(0, -1).trim();
-                        return p;
-                    };
+                        // Bornes de début et fin
+                        if (isHyperU) {
+                            if (l.includes("VENTE")) { startReading = true; continue; }
+                            if (l.includes("NOMBRE DE LIGNES") || l.includes("TOTAL")) break;
+                        } else {
+                            if (l.includes("€") || l.includes("EUR")) { startReading = true; continue; }
+                            if (l.startsWith("TOTAL") || l.includes("RESTE A PAYER")) break;
+                        }
 
-                    lignesAInscrire.forEach((ligne, index) => {
-                        let l = ligne.toUpperCase();
-                        if (l.length < 3 || l.includes("MONTANT") || l.includes("RESTE A PAYER")) return;
+                        if (!startReading) continue;
 
                         const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const matchPrix = l.match(regexPrix);
-                        
-                        if (matchPrix) {
-                            let nomBrut = l.replace(regexPrix, "").trim();
-                            
-                            // Si la ligne contient seulement le prix, on regarde la ligne du dessus
-                            if (nomBrut.length < 3 && index > 0) {
-                                let ligneDessus = lignesAInscrire[index-1].toUpperCase();
-                                if (!ligneDessus.includes("PESÉE") && !ligneDessus.includes("€")) {
-                                    nomBrut = ligneDessus;
+                        const regexMulti = /(\d+)\s*[X*]\s*[\d,.]+€?/; // Pour "2 X 0.85€"
+
+                        // SI ON DÉTECTE UN PRIX OU UN MULTIPLICATEUR
+                        if (regexPrix.test(l) || regexMulti.test(l)) {
+                            let matchMulti = l.match(regexMulti);
+                            let qte = matchMulti ? parseInt(matchMulti[1]) : 1;
+
+                            // Si c'est juste un multiplicateur (ex: ligne 2 X 0.85€ de Leclerc)
+                            // On l'attribue au dernier article ajouté
+                            if (matchMulti && !regexPrix.test(l) && res.length > 0) {
+                                res[res.length - 1].qte = qte;
+                                continue;
+                            }
+
+                            // SINON, ON CHERCHE LE NOM EN REMONTANT
+                            for (let j = 1; j <= 5; j++) {
+                                let nomC = lignes[i - j];
+                                if (!nomC || nomC.length < 3) continue;
+
+                                // On ignore les lignes parasites
+                                if (!nomC.match(regexPrix) && 
+                                    !nomC.match(regexMulti) && 
+                                    !nomC.includes("PESÉE") && 
+                                    !nomC.includes("€/KG") &&
+                                    !nomC.includes("KG X") &&
+                                    !nomC.includes("---") &&
+                                    !nomC.includes("MONTANT") &&
+                                    !nomC.includes("RESTE A PAYER") &&
+                                    !/^\d+$/.test(nomC.replace(/\s/g, ""))) {
+                                    
+                                    let nomFinal = nomC.replace(/[*_]/g, "").split(',')[0].trim();
+                                    
+                                    if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
+                                        const cat = detectCategory(nomFinal);
+                                        res.push({ nom: nomFinal, qte: qte, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                                        break;
+                                    }
                                 }
                             }
-
-                            const nomFinal = nettoyer(nomBrut);
-                            if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
-                                const cat = detectCategory(nomFinal);
-                                res.push({ 
-                                    nom: nomFinal, 
-                                    qte: 1, 
-                                    dlc: '', 
-                                    congele: false, 
-                                    zone: cat.zone, 
-                                    rayon: cat.rayon, 
-                                    typeStock: 'unite' 
-                                });
-                            }
                         }
-                    });
+                    }
 
-                    setReceiptItems(res);
-                    await worker.terminate();
+                    setReceiptItems(res); await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
             };
 
