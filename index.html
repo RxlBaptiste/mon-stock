@@ -4,28 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#22c55e">
-    <title>Mon Stockage Pro</title>
+    <title>Mon Stockage Pro - Intelligent</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f3f4f6; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
         @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
-        /* Correction : On applique l'animation et une bordure orange */
         .warning-dlc { animation: pulse-orange 2s infinite; border-left: 5px solid #fb923c !important; }
         .expired-dlc { background-color: #fef2f2; border-left: 5px solid #ef4444 !important; }
-
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-up { animation: slideUp 0.3s ease-out; }
-        
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         #barcode-ui video { width: 100%; height: 100%; object-fit: cover; border-radius: 2rem; }
-        #barcode-ui canvas { display: none; }
     </style>
 </head>
 <body>
@@ -34,11 +28,16 @@
     <script type="text/babel">
         const API_URL = "https://baptisterouxel.fr/stock/api.php";
         const { useState, useEffect, useRef } = React;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
-        const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
-        const PASS_SOEUR = "1912";
-        const PASS_PERE = "5678";
+        // --- BASE DE DONNÉES DE DURÉE DE VIE (en jours) ---
+        const FRUIT_LIFESPAN = {
+            // Très fragiles (1-3 jours)
+            "FRAISE": 2, "FRAMBOISE": 2, "MURE": 2, "MYRTILLE": 3, "CERISE": 3, "SALADE": 3, "CHAMPIGNON": 3, "EPINARD": 2, "ASPERGE": 3,
+            // Moyens (4-7 jours)
+            "POIRE": 7, "TOMATE": 7, "BANANE": 5, "AVOCAT": 4, "PECHE": 5, "NECTARINE": 5, "ABRICOT": 4, "PRUNE": 6, "COURGETTE": 6, "AUBERGINE": 6, "POIVRON": 7, "CONCOMBRE": 6, "HARICOT VERT": 5, "BROCOLI": 5,
+            // Robustes (10 jours +)
+            "POMME": 21, "ORANGE": 14, "CITRON": 20, "PAMPLEMOUSSE": 15, "MELON": 10, "PASTEQUE": 10, "POMME DE TERRE": 30, "OIGNON": 30, "AIL": 60, "CAROTTE": 20, "CHOU-FLEUR": 12, "CHOU": 15, "RADIS": 10, "KIWI": 15
+        };
 
         const STRUCTURE = {
             "Alimentaire": { icon: "🧺", rayons: [
@@ -55,21 +54,6 @@
             ]}
         };
 
-        const AUTO_MAPPING = {
-            "YAOURT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "LAIT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "FROMAGE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "BEURRE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "POMME": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-            "BANANE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-            "POULET": { zone: "Alimentaire", rayon: "Viande" },
-            "JAMBON": { zone: "Alimentaire", rayon: "Viande" },
-            "PAIN": { zone: "Alimentaire", rayon: "Boulangerie" },
-            "BAGUETTE": { zone: "Alimentaire", rayon: "Boulangerie" },
-            "EAU": { zone: "Alimentaire", rayon: "Boissons" },
-            "SOPALIN": { zone: "Hygiène", rayon: "Papier" }
-        };
-
         const App = () => {
             const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
             const [produits, setProduits] = useState([]);
@@ -79,22 +63,33 @@
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
-            const [receiptItems, setReceiptItems] = useState([]);
+            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', congele: false, maturite: '' });
             const [isScanningBarcode, setIsScanningBarcode] = useState(false);
-            const isProcessingBarcode = useRef(false);
-
             const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
-            useEffect(() => {
-                if (isLoggedIn) refreshStock();
-            }, [isLoggedIn, currentUser]);
+            useEffect(() => { if (isLoggedIn) refreshStock(); }, [isLoggedIn, currentUser]);
 
             const refreshStock = () => {
                 fetch(`${API_URL}?action=get_stock&user=${currentUser}`)
                     .then(res => res.json())
                     .then(data => setProduits(Array.isArray(data) ? data : []))
                     .catch(() => setProduits([]));
+            };
+
+            const formatFR = (dateStr) => {
+                if (!dateStr || !dateStr.includes('-')) return dateStr || 'SANS DATE';
+                const [y, m, d] = dateStr.split('-');
+                return `${d}/${m}/${y}`;
+            };
+
+            const checkDLCStatus = (dateStr) => {
+                if (!dateStr) return "";
+                const today = new Date();
+                const dlc = new Date(dateStr);
+                const diff = (dlc - today) / (1000 * 3600 * 24);
+                if (diff < 0) return "expired-dlc";
+                if (diff <= 3) return "warning-dlc";
+                return "";
             };
 
             const syncWithServer = async (p) => {
@@ -107,173 +102,40 @@
                 } catch (err) { console.error("Erreur Sync:", err); }
             };
 
-            const detectCategory = async (nom) => {
-    const n = nom.toUpperCase().trim();
-
-    // 1. On interroge ton API pour voir si ce produit a déjà été classé par un membre de la famille
-    try {
-        const response = await fetch(`${API_URL}?action=get_product_category&nom=${encodeURIComponent(n)}`);
-        const data = await response.json();
-        
-        if (data && data.zone) {
-            return { zone: data.zone, rayon: data.rayon };
-        }
-    } catch (e) {
-        console.log("Nouveau produit jamais classé.");
-    }
-
-    // 2. Si inconnu, on tente une recherche rapide sur Open Food Facts via le nom
-    try {
-        const offRes = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(n)}&search_simple=1&action=process&json=1`);
-        const offData = await offRes.json();
-        
-        if (offData.products && offData.products.length > 0) {
-            const p = offData.products[0];
-            // Logique de mapping simplifiée sur les catégories OFF
-            if (p.categories_tags.some(c => c.includes('dairy'))) return { zone: "Alimentaire", rayon: "Produits Laitiers" };
-            if (p.categories_tags.some(c => c.includes('meat'))) return { zone: "Alimentaire", rayon: "Viande" };
-            if (p.categories_tags.some(c => c.includes('beverages'))) return { zone: "Alimentaire", rayon: "Boissons" };
-            if (p.categories_tags.some(c => c.includes('frozen'))) return { zone: "Alimentaire", rayon: "Surgelés" };
-            if (p.categories_tags.some(c => c.includes('fruits'))) return { zone: "Alimentaire", rayon: "Fruits et Légumes" };
-        }
-    } catch (e) {
-        console.log("Recherche OFF échouée.");
-    }
-
-    // 3. Par défaut si vraiment rien n'est trouvé
-    return { zone: "Alimentaire", rayon: "Autres" };
-};
-
-            const checkDLCStatus = (dateStr) => {
-                if (!dateStr) return "";
-                const today = new Date();
-                const dlc = new Date(dateStr);
-                const diff = (dlc - today) / (1000 * 3600 * 24);
-                if (diff < 0) return "expired-dlc";
-                if (diff <= 3) return "warning-dlc";
-                return "";
-            };
-
-            // --- SCANNER CODE-BARRES ---
-            const startBarcode = () => {
-                setIsScanningBarcode(true);
-                isProcessingBarcode.current = false;
-                setTimeout(() => {
-                    Quagga.init({
-                        inputStream: { 
-                            name: "Live", type: "LiveStream", 
-                            target: document.querySelector('#barcode-ui'),
-                            constraints: { facingMode: "environment" } 
-                        },
-                        decoder: { readers: ["ean_reader", "ean_8_reader"] },
-                        locate: true
-                    }, (err) => {
-                        if (err) { alert("Caméra indisponible"); setIsScanningBarcode(false); return; }
-                        Quagga.start();
-                    });
-
-                    Quagga.onDetected(async (data) => {
-                        if (isProcessingBarcode.current) return;
-                        const code = data.codeResult.code;
-                        isProcessingBarcode.current = true;
-                        
-                        try {
-                            const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                            const json = await res.json();
-                            if (json.status === 1) {
-                                const p = json.product;
-                                const nom = (p.product_name_fr || p.product_name || "INCONNU").toUpperCase();
-                                const cat = detectCategory(nom);
-                                setForm({ ...form, nom: nom, zone: cat.zone, rayon: cat.rayon, typeStock: 'unite', stock: 1 });
-                                setShowAddModal(true);
-                                Quagga.stop();
-                                setIsScanningBarcode(false);
-                            } else {
-                                isProcessingBarcode.current = false;
-                            }
-                        } catch (e) { isProcessingBarcode.current = false; }
-                    });
-                }, 300);
-            };
-
-            // --- SCANNER TICKET ---
-            const scanTicket = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setLoading(true);
-                setReceiptItems([]);
-                try {
-                    let source = "";
-                    if (file.type === "application/pdf") {
-                        const arrayBuffer = await file.arrayBuffer();
-                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                        const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 2.0 });
-                        const canvas = document.createElement("canvas");
-                        const context = canvas.getContext("2d");
-                        canvas.height = viewport.height; canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport: viewport }).promise;
-                        source = canvas.toDataURL("image/png");
-                    } else {
-                        source = URL.createObjectURL(file);
-                    }
-
-                    const worker = await Tesseract.createWorker("fra");
-                    const { data: { text } } = await worker.recognize(source);
-                    const lignes = text.split("\n");
-                    const res = [];
-
-                    lignes.forEach((ligne) => {
-                        let l = ligne.trim().toUpperCase();
-                        if (l.length < 4 || l.includes("TOTAL")) return;
-                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        if (regexPrix.test(l)) {
-                            let nF = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                            if (nF.length > 2) {
-                                const cat = detectCategory(nF);
-                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: 'unite' });
-                            }
-                        }
-                    });
-                    setReceiptItems(res);
-                    await worker.terminate();
-                } catch (err) { console.error(err); alert("Erreur lors de l'analyse"); } finally { setLoading(false); }
-            };
-
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
-                    let step = p.typeStock === 'pourcent' ? 25 : 1;
-                    let next = Number(p.stock) + (delta * step);
-                    
-                    if (next <= 0 && delta < 0) { 
-                        setConfirmDelete({ show: true, produit: p }); 
-                        return p; 
-                    }
+                    let next = Number(p.stock) + (p.typeStock === 'pourcent' ? delta * 25 : delta);
+                    if (next <= 0 && delta < 0) { setConfirmDelete({ show: true, produit: p }); return p; }
                     const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
-                    syncWithServer(u); 
-                    return u;
+                    syncWithServer(u); return u;
                 });
                 setProduits(newP);
             };
 
-            // --- RENDU LOGIN ---
+            // --- LOGIQUE MATURITÉ ---
+            const handleMaturity = (nom, etatIndex) => {
+                const baseLife = FRUIT_LIFESPAN[nom.toUpperCase()] || 5;
+                const coeffs = [1.5, 1.0, 0.5]; // Pas mûr, Bientôt mûr, Mûr
+                const etats = ["Pas mûr", "Bientôt mûr", "Mûr"];
+                const jours = Math.round(baseLife * coeffs[etatIndex]);
+                const d = new Date();
+                d.setDate(d.getDate() + jours);
+                setForm({ ...form, nom: nom.toUpperCase(), date: d.toISOString().split('T')[0], maturite: etats[etatIndex] });
+            };
+
             if (!isLoggedIn) return (
                 <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl animate-up">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
                         <form onSubmit={(e) => { 
                             e.preventDefault(); 
                             const pass = e.target.p.value; 
-                            const users = {[PASS_BAPTISTE]:'baptiste',[PASS_SOEUR]:'soeur',[PASS_PERE]:'pere'}; 
-                            if(users[pass]){
-                                localStorage.setItem('stock_user',users[pass]);
-                                localStorage.setItem('stock_session','active');
-                                setIsLoggedIn(true);
-                            } else { alert("Code erroné"); }
+                            const users = {"CeciEstMonMotDePasseStock_22":'baptiste',"1912":'soeur',"5678":'pere'}; 
+                            if(users[pass]){ localStorage.setItem('stock_user',users[pass]); localStorage.setItem('stock_session','active'); setIsLoggedIn(true); }
                         }} className="space-y-4">
-                            <h2 className="font-black uppercase text-center mb-4 text-gray-800">Accès Stockage</h2>
-                            <input name="p" type="password" inputMode="numeric" placeholder="Code secret..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none focus:border-green-500 transition-all" />
-                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all">Entrer</button>
+                            <h2 className="font-black uppercase text-center mb-4 text-gray-800 tracking-tighter">Mon Stockage</h2>
+                            <input name="p" type="password" inputMode="numeric" placeholder="Code secret..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none focus:border-green-500" />
+                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase active:scale-95 transition-all">Entrer</button>
                         </form>
                     </div>
                 </div>
@@ -283,93 +145,38 @@
                 <div className="max-w-md mx-auto min-h-screen pb-32">
                     <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
-                            <div className="flex gap-2">
-                                <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm active:scale-95">🧾 Ticket</button>
-                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm active:scale-95">{view === 'home' ? 'Courses' : 'Stock'}</button>
-                            </div>
+                            <h1 className="font-black italic text-lg uppercase text-green-600 underline">STOCK PRO</h1>
+                            <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm active:scale-95">
+                                {view === 'home' ? '🛒 Courses' : '🏠 Stock'}
+                            </button>
                         </div>
-                        {view === 'home' && <input type="text" placeholder="🔍 Rechercher un produit..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />}
+                        {view === 'home' && <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />}
                     </header>
 
                     <main className="p-4">
-                        {/* SECTION BARCODE */}
-                        {view === 'home' && !searchTerm && (
-                            <div className="mb-6">
-                                {!isScanningBarcode ? (
-                                    <button onClick={startBarcode} className="w-full p-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-black uppercase text-[10px] shadow-sm flex items-center justify-center gap-3 active:scale-95 transition-all">
-                                        📷 Scanner Code-Barre
-                                    </button>
-                                ) : (
-                                    <div className="relative animate-up h-64 bg-black rounded-[2rem] overflow-hidden border-4 border-green-500" id="barcode-ui">
-                                        <button onClick={() => { Quagga.stop(); setIsScanningBarcode(false); }} className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black z-20">FERMER</button>
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="w-[70%] h-[1px] bg-red-500 shadow-[0_0_10px_red] animate-pulse"></div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* VUE TICKET */}
-                        {view === 'receipt' && (
-                            <div className="animate-up space-y-4">
-                                <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-300">
-                                    <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
-                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg active:scale-95">📷 Charger Ticket</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase italic">Analyse du document...</p>}
-                                </div>
-                                {receiptItems.map((item, idx) => (
-                                    <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-black text-xs uppercase text-gray-700 w-2/3">{item.nom}</span>
-                                            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
-                                                <span className="px-2 font-black text-xs">x{item.qte}</span>
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>
-                                                {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
-                                            </select>
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>
-                                                {STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                ))}
-                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:i.typeStock,stock:i.qte,date:i.dlc,congele:i.congele?1:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest">Tout enregistrer 🚀</button>}
-                            </div>
-                        )}
-
-                        {/* VUE HOME (STOCK) */}
                         {view === 'home' && Object.keys(STRUCTURE).map(zone => {
                             const zItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
                             if (zItems.length === 0) return null;
                             return (
-                                <div key={zone} className="mb-3">
-                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-widest active:bg-gray-50 transition-colors">
+                                <div key={zone} className="mb-4">
+                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-400 tracking-widest">
                                         <span>{STRUCTURE[zone].icon} {zone}</span>
-                                        <span className="opacity-30">{openSections[zone] ? '▲' : '▼'}</span>
+                                        <span>{openSections[zone] ? '▲' : '▼'}</span>
                                     </button>
                                     {openSections[zone] && STRUCTURE[zone].rayons.map(ray => {
                                         const rItems = zItems.filter(p => p.rayon === ray.id);
                                         if (rItems.length === 0) return null;
                                         return (
-                                            <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2 animate-up">
-                                                <div className="w-full p-3 px-5 bg-gray-50/50 flex justify-between text-[9px] font-black uppercase text-gray-400 border-b">
+                                            <div key={ray.id} className="ml-2 mt-2 bg-white rounded-2xl shadow-sm border border-gray-50 overflow-hidden mb-2 animate-up">
+                                                <div className="p-3 px-5 bg-gray-50/50 text-[9px] font-black uppercase text-gray-400 border-b flex justify-between">
                                                     <span>{ray.icon} {ray.id}</span>
-                                                    <span>{rItems.length} ARTICLES</span>
+                                                    <span>{rItems.length}</span>
                                                 </div>
                                                 {rItems.map(p => (
                                                     <div key={p.id} className={`p-4 flex justify-between items-center border-b border-gray-50 last:border-none ${checkDLCStatus(p.date)}`}>
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.date || 'SANS DATE'}</span>
-                                                                {p.congele == 1 && <span className="text-[10px]">❄️</span>}
-                                                            </div>
+                                                            <span className="text-[9px] text-gray-400 italic font-bold uppercase">{formatFR(p.date)} {p.congele == 1 ? '❄️' : ''}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg mr-1">{p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}</span>
@@ -385,24 +192,16 @@
                             );
                         })}
 
-                        {/* VUE SHOPPING */}
                         {view === 'shopping' && (
                             <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-100 overflow-hidden animate-up">
-                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? 
-                                    <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-40">Votre liste est vide</p> :
+                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black">Liste vide</p> :
                                     produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6">
                                             <div className="flex items-center gap-4">
-                                                <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => { 
-                                                    // Optionnel : remettre en stock si décoché
-                                                    updateStock(p.id, 1);
-                                                }} />
-                                                <div>
-                                                    <p className="font-bold text-sm text-gray-700 uppercase leading-none">{p.nom}</p>
-                                                    <p className="text-[8px] font-black uppercase text-gray-300 mt-1">{p.rayon}</p>
-                                                </div>
+                                                <input type="checkbox" className="w-6 h-6 accent-green-600" onChange={() => updateStock(p.id, 1)} />
+                                                <span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span>
                                             </div>
-                                            <button onClick={() => { if(confirm("Supprimer l'article ?")){ fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }}} className="text-gray-300 p-2">✕</button>
+                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-300">✕</button>
                                         </div>
                                     ))
                                 }
@@ -414,34 +213,46 @@
                     {showAddModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[60] p-4">
                             <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <h2 className="text-center font-black mb-6 uppercase text-gray-400 text-[10px] tracking-widest">Nouvel Article</h2>
-                                <input type="text" placeholder="NOM..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none focus:ring-2 focus:ring-green-500" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
-                                <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl">
-                                    <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Unités</button>
-                                    <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
-                                </div>
+                                <h2 className="text-center font-black mb-6 uppercase text-gray-400 text-[10px] tracking-widest">Nouveau Produit</h2>
+                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-2 border-transparent focus:border-green-500" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
+                                
                                 <div className="grid grid-cols-2 gap-2 mb-4">
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold uppercase" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
+                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold uppercase" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
                                         {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-6">
-                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+
+                                {/* SECTION DLC INTELLIGENTE */}
+                                <div className="mb-6">
+                                    {form.rayon === "Fruits et Légumes" ? (
+                                        <div className="space-y-2">
+                                            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">État de maturité :</p>
+                                            <div className="flex gap-1">
+                                                {["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => (
+                                                    <button key={label} onClick={() => handleMaturity(form.nom, idx)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${form.maturite === (idx===0?"Pas mûr":idx===1?"Bientôt mûr":"Mûr") ? 'bg-orange-500 border-orange-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            {form.date && <p className="text-center text-[9px] font-bold text-orange-600 animate-pulse">PRÉVU JUSQU'AU : {formatFR(form.date)}</p>}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">Date de péremption :</p>
+                                            <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <button onClick={async () => { 
-                                        const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; 
-                                        setProduits([n,...produits]); 
-                                        await syncWithServer(n); 
-                                        setShowAddModal(false); 
-                                        setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',directShopping:false,congele:false}); 
-                                    }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Valider ✅</button>
-                                    <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase text-center py-2">Fermer</button>
-                                </div>
+
+                                <button onClick={async () => { 
+                                    const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; 
+                                    setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); 
+                                    setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); 
+                                }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
                             </div>
                         </div>
                     )}
@@ -450,22 +261,20 @@
                     {confirmDelete.show && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6 text-center">
                             <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up">
-                                <div className="text-4xl mb-4">🛒</div>
                                 <h3 className="font-black uppercase text-sm mb-2 text-gray-800">Plus de stock !</h3>
-                                <p className="text-gray-400 text-[10px] mb-8 leading-relaxed uppercase font-bold">Ajouter <span className="text-green-600">{confirmDelete.produit?.nom}</span> à la liste ?</p>
+                                <p className="text-gray-400 text-[10px] mb-8 uppercase font-bold">Ajouter {confirmDelete.produit?.nom} à la liste ?</p>
                                 <div className="flex flex-col gap-3">
-                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Oui, mettre en courses</button>
-                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Non, supprimer tout</button>
-                                    <button onClick={() => setConfirmDelete({show:false,produit:null})} className="text-[9px] font-black text-gray-300 uppercase mt-2">Annuler</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px]">Oui, en courses 🛒</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px]">Supprimer</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
-                        <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view==='home'?'text-green-600 scale-125':'text-gray-200'}`}>🏠</button>
+                        <button onClick={() => setView('home')} className={`p-4 transition-all ${view==='home'?'text-green-600 scale-125':'text-gray-200'}`}>🏠</button>
                         <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
-                        <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view==='shopping'?'text-green-600 scale-125':'text-gray-200'}`}>🛒</button>
+                        <button onClick={() => setView('shopping')} className={`p-4 transition-all ${view==='shopping'?'text-green-600 scale-125':'text-gray-200'}`}>🛒</button>
                     </nav>
                 </div>
             );
