@@ -173,8 +173,28 @@
                     const worker = await Tesseract.createWorker("fra");
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
-                    const lignes = text.split("\n");
+                    
+                    const lignesBrutes = text.split("\n").map(l => l.trim());
                     const res = [];
+                    
+                    // --- LOGIQUE FILTRE MAGASIN ---
+                    const textComplet = text.toUpperCase();
+                    let lignesAInscrire = [];
+
+                    if (textComplet.includes("VENTE") && textComplet.includes("NOMBRE DE LIGNES")) {
+                        // FILTRE HYPER U : Entre "***VENTE***" et "Nombre de lignes"
+                        let debut = lignesBrutes.findIndex(l => l.toUpperCase().includes("VENTE"));
+                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().includes("NOMBRE DE LIGNES"));
+                        lignesAInscrire = lignesBrutes.slice(debut + 1, fin);
+                    } else if (textComplet.includes("TOTAL")) {
+                        // FILTRE LECLERC : Entre le symbole "€" et "Total"
+                        let debut = lignesBrutes.findIndex(l => l.includes("€") || l.toUpperCase().includes("EUR"));
+                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().startsWith("TOTAL"));
+                        lignesAInscrire = lignesBrutes.slice(debut + 1, fin);
+                    } else {
+                        lignesAInscrire = lignesBrutes;
+                    }
+
                     const nettoyer = (n) => {
                         const d = n.search(/\d/);
                         let p = d !== -1 ? n.substring(0, d) : n;
@@ -182,20 +202,41 @@
                         while (p.endsWith(".") || p.endsWith(",")) p = p.slice(0, -1).trim();
                         return p;
                     };
-                    lignes.forEach((ligne, index) => {
-                        let l = ligne.trim().toUpperCase();
-                        if (l.length < 3 || l.includes("TOTAL")) return;
+
+                    lignesAInscrire.forEach((ligne, index) => {
+                        let l = ligne.toUpperCase();
+                        if (l.length < 3 || l.includes("MONTANT") || l.includes("RESTE A PAYER")) return;
+
                         const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
                         const matchPrix = l.match(regexPrix);
+                        
                         if (matchPrix) {
-                            let nB = l.replace(regexPrix, "").trim();
-                            const nF = nettoyer(nB);
-                            if (nF.length > 2 && !res.some(p => p.nom === nF)) {
-                                const cat = detectCategory(nF);
-                                res.push({ nom: nF, qte: 1, dlc: '', congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: 'unite' });
+                            let nomBrut = l.replace(regexPrix, "").trim();
+                            
+                            // Si la ligne contient seulement le prix, on regarde la ligne du dessus
+                            if (nomBrut.length < 3 && index > 0) {
+                                let ligneDessus = lignesAInscrire[index-1].toUpperCase();
+                                if (!ligneDessus.includes("PESÉE") && !ligneDessus.includes("€")) {
+                                    nomBrut = ligneDessus;
+                                }
+                            }
+
+                            const nomFinal = nettoyer(nomBrut);
+                            if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
+                                const cat = detectCategory(nomFinal);
+                                res.push({ 
+                                    nom: nomFinal, 
+                                    qte: 1, 
+                                    dlc: '', 
+                                    congele: false, 
+                                    zone: cat.zone, 
+                                    rayon: cat.rayon, 
+                                    typeStock: 'unite' 
+                                });
                             }
                         }
                     });
+
                     setReceiptItems(res);
                     await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
