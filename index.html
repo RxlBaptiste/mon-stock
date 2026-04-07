@@ -180,14 +180,21 @@
                     const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
                     
-                    const isHyperU = text.toUpperCase().includes("VENTE");
+                    // --- DETECTION ET AFFICHAGE CONSOLE ---
+                    const isHyperU = text.toUpperCase().includes("VENTE") || text.toUpperCase().includes("U ENSEIGNE");
+                    
+                    if (isHyperU) {
+                        console.log("%c 🛒 MAGASIN DÉTECTÉ : HYPER U ", "background: #ef4444; color: white; font-weight: bold; padding: 4px;");
+                    } else {
+                        console.log("%c 🛒 MAGASIN DÉTECTÉ : LECLERC ", "background: #3b82f6; color: white; font-weight: bold; padding: 4px;");
+                    }
+
                     let startReading = false;
 
                     for (let i = 0; i < lignes.length; i++) {
                         let l = lignes[i];
                         if (l.length < 3) continue;
 
-                        // Bornes de début et fin
                         if (isHyperU) {
                             if (l.includes("VENTE")) { startReading = true; continue; }
                             if (l.includes("NOMBRE DE LIGNES") || l.includes("TOTAL")) break;
@@ -199,50 +206,48 @@
                         if (!startReading) continue;
 
                         const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const regexMulti = /(\d+)\s*[X*]\s*[\d,.]+€?/; // Pour "2 X 0.85€"
+                        const regexMulti = /(\d+)\s*[X*]\s*[\d,.]+€?/; 
 
-                        // SI ON DÉTECTE UN PRIX OU UN MULTIPLICATEUR
-                        if (regexPrix.test(l) || regexMulti.test(l)) {
-                            let matchMulti = l.match(regexMulti);
-                            let qte = matchMulti ? parseInt(matchMulti[1]) : 1;
+                        if (regexMulti.test(l)) {
+                            const qte = parseInt(l.match(regexMulti)[1]);
+                            if (res.length > 0) res[res.length - 1].qte = qte;
+                            continue;
+                        }
 
-                            // Si c'est juste un multiplicateur (ex: ligne 2 X 0.85€ de Leclerc)
-                            // On l'attribue au dernier article ajouté
-                            if (matchMulti && !regexPrix.test(l) && res.length > 0) {
-                                res[res.length - 1].qte = qte;
-                                continue;
-                            }
-
-                            // SINON, ON CHERCHE LE NOM EN REMONTANT
-                            for (let j = 1; j <= 5; j++) {
-                                let nomC = lignes[i - j];
-                                if (!nomC || nomC.length < 3) continue;
-
-                                // On ignore les lignes parasites
-                                if (!nomC.match(regexPrix) && 
-                                    !nomC.match(regexMulti) && 
-                                    !nomC.includes("PESÉE") && 
-                                    !nomC.includes("€/KG") &&
-                                    !nomC.includes("KG X") &&
-                                    !nomC.includes("---") &&
-                                    !nomC.includes("MONTANT") &&
-                                    !nomC.includes("RESTE A PAYER") &&
-                                    !/^\d+$/.test(nomC.replace(/\s/g, ""))) {
-                                    
-                                    let nomFinal = nomC.replace(/[*_]/g, "").split(',')[0].trim();
-                                    
-                                    if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
-                                        const cat = detectCategory(nomFinal);
-                                        res.push({ nom: nomFinal, qte: qte, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                        if (regexPrix.test(l)) {
+                            let namePart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
+                            
+                            if (namePart.length < 3) {
+                                for (let j = 1; j <= 6; j++) {
+                                    let nomC = lignes[i - j];
+                                    if (!nomC || nomC.length < 3) continue;
+                                    if (!nomC.match(regexPrix) && !nomC.match(regexMulti) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---") && !nomC.includes("MONTANT") && !/^\d+$/.test(nomC.replace(/\s/g, ""))) {
+                                        let nomFinal = nomC.replace(/[*_]/g, "").split(',')[0].trim();
+                                        if (!res.some(p => p.nom === nomFinal)) {
+                                            const cat = detectCategory(nomFinal);
+                                            res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                                        }
                                         break;
                                     }
+                                }
+                            } else {
+                                let nomFinal = namePart.split(',')[0].trim();
+                                if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
+                                    const cat = detectCategory(nomFinal);
+                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
                                 }
                             }
                         }
                     }
 
-                    setReceiptItems(res); await worker.terminate();
-                } catch (err) { console.error(err); } finally { setLoading(false); }
+                    console.log("📦 Articles extraits :", res);
+                    setReceiptItems(res); 
+                    await worker.terminate();
+                } catch (err) { 
+                    console.error("❌ Erreur de scan :", err); 
+                } finally { 
+                    setLoading(false); 
+                }
             };
 
             const updateStock = (id, delta) => {
