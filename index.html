@@ -160,6 +160,7 @@
                 if (!file) return;
                 setLoading(true);
                 setReceiptItems([]);
+                console.log("--- DÉBUT DU SCAN ---");
                 try {
                     let source = "";
                     if (file.type === "application/pdf") {
@@ -177,74 +178,82 @@
                     const worker = await Tesseract.createWorker("fra");
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
+                    
+                    // ON AFFICHE LE TEXTE BRUT POUR VOIR CE QUE L'OCR LIT
+                    console.log("TEXTE BRUT RECONNU :", text);
+
                     const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
                     
-                    // --- DETECTION ET AFFICHAGE CONSOLE ---
-                    const isHyperU = text.toUpperCase().includes("VENTE") || text.toUpperCase().includes("U ENSEIGNE");
+                    const isHyperU = text.toUpperCase().includes("VENTE") || text.toUpperCase().includes("LIGNES D'ARTICLE");
                     
-                    if (isHyperU) {
-                        console.log("%c 🛒 MAGASIN DÉTECTÉ : HYPER U ", "background: #ef4444; color: white; font-weight: bold; padding: 4px;");
-                    } else {
-                        console.log("%c 🛒 MAGASIN DÉTECTÉ : LECLERC ", "background: #3b82f6; color: white; font-weight: bold; padding: 4px;");
-                    }
+                    console.log(isHyperU ? "%c MODE : HYPER U " : "%c MODE : LECLERC ", "background: #000; color: #fff; font-weight: bold;");
 
                     let startReading = false;
 
                     for (let i = 0; i < lignes.length; i++) {
                         let l = lignes[i];
-                        if (l.length < 3) continue;
+                        if (l.length < 2) continue;
 
+                        // --- LOGIQUE DE DÉBUT / FIN ---
                         if (isHyperU) {
                             if (l.includes("VENTE")) { startReading = true; continue; }
-                            if (l.includes("NOMBRE DE LIGNES") || l.includes("TOTAL")) break;
+                            if (l.includes("NOMBRE DE LIGNES") || l.includes("RESTE A PAYER")) break;
                         } else {
-                            if (l.includes("€") || l.includes("EUR")) { startReading = true; continue; }
+                            // Pour Leclerc, on commence dès qu'on voit un symbole monétaire ou un prix
+                            if (l.includes("€") || l.includes("EUR") || /(\d+[\.,]\d{2})$/.test(l)) { startReading = true; }
                             if (l.startsWith("TOTAL") || l.includes("RESTE A PAYER")) break;
                         }
 
                         if (!startReading) continue;
 
                         const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const regexMulti = /(\d+)\s*[X*]\s*[\d,.]+€?/; 
+                        const regexMulti = /^(\d+)\s*[X*x]/; // Détecte "2 X" ou "2 *"
 
-                        if (regexMulti.test(l)) {
+                        // 1. GESTION DES QUANTITÉS (Leclerc : ligne 2 X 0.85)
+                        if (regexMulti.test(l) && !l.includes("KG")) {
                             const qte = parseInt(l.match(regexMulti)[1]);
-                            if (res.length > 0) res[res.length - 1].qte = qte;
+                            if (res.length > 0) {
+                                console.log("Quantité mise à jour :", qte);
+                                res[res.length - 1].qte = qte;
+                            }
                             continue;
                         }
 
+                        // 2. GESTION DES LIGNES AVEC PRIX (Validation d'un article)
                         if (regexPrix.test(l)) {
                             let namePart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
                             
+                            // Si la ligne est vide de nom (ex: Hyper U ou prix décalé)
                             if (namePart.length < 3) {
-                                for (let j = 1; j <= 6; j++) {
+                                // On remonte jusqu'à trouver le nom
+                                for (let j = 1; j <= 5; j++) {
                                     let nomC = lignes[i - j];
                                     if (!nomC || nomC.length < 3) continue;
-                                    if (!nomC.match(regexPrix) && !nomC.match(regexMulti) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---") && !nomC.includes("MONTANT") && !/^\d+$/.test(nomC.replace(/\s/g, ""))) {
+                                    // On ignore les lignes de pesée et de calcul
+                                    if (!nomC.match(regexPrix) && !nomC.match(regexMulti) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---")) {
                                         let nomFinal = nomC.replace(/[*_]/g, "").split(',')[0].trim();
                                         if (!res.some(p => p.nom === nomFinal)) {
-                                            const cat = detectCategory(nomFinal);
-                                            res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                                            res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                                         }
                                         break;
                                     }
                                 }
                             } else {
+                                // Nom et prix sur la même ligne (Leclerc)
                                 let nomFinal = namePart.split(',')[0].trim();
-                                if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
-                                    const cat = detectCategory(nomFinal);
-                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                                if (nomFinal.length > 2 && !nomFinal.includes("TOTAL") && !nomFinal.includes("MONTANT")) {
+                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                                 }
                             }
                         }
                     }
 
-                    console.log("📦 Articles extraits :", res);
+                    console.log("RÉSULTAT FINAL :", res);
                     setReceiptItems(res); 
                     await worker.terminate();
                 } catch (err) { 
-                    console.error("❌ Erreur de scan :", err); 
+                    console.error("ERREUR SCAN :", err); 
                 } finally { 
                     setLoading(false); 
                 }
