@@ -402,6 +402,56 @@ const extractTicketArticleCount = (text) => {
     return false;
 };
 
+            const truncateReceiptForItems = (text) => {
+    const lines = (text || "")
+        .split("\n")
+        .map(l => normalizeText(l))
+        .filter(Boolean);
+
+    const stopPatterns = [
+        /^TOTAL\s*\[?\s*\d+\s*\]?\s*ARTICLES?/i,
+        /^TOTAL\s+\d+\s+ARTICLES?/i,
+        /^SOUS[\s-]?TOTAL/i,
+        /^TOTAL\s+TVA/i,
+        /^CB\b/i,
+        /CARTE\s+BANCAIRE/i,
+        /CREDIT\s+AGRICOLE/i,
+        /MERCI\s+DE\s+VOTRE\s+VISITE/i
+    ];
+
+    const stopIndex = lines.findIndex(line => stopPatterns.some(rx => rx.test(line)));
+
+    if (stopIndex === -1) return lines.join("\n");
+
+    return lines.slice(0, stopIndex).join("\n");
+};
+
+const isQuantityLine = (line) => {
+    if (!line) return false;
+    const l = normalizeText(line).toUpperCase();
+
+    return /^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i.test(l);
+};
+
+const extractQuantityFromLine = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+    const m = l.match(/^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
+    return m ? parseInt(m[1], 10) : null;
+};
+
+const isWeightedDetailLine = (line) => {
+    if (!line) return false;
+    const l = normalizeText(line).toUpperCase();
+
+    return (
+        /PESEE MANUELLE/.test(l) ||
+        /PESÉE MANUELLE/.test(l) ||
+        /\d+[.,]\d+\s*KG\s*[Xx]\s*\d+[.,]\d+\s*€?\s*\/?\s*KG/.test(l) ||
+        /\d+[.,]\d+\s*KG\s*[Xx]/.test(l) ||
+        /€\s*\/\s*KG/.test(l)
+    );
+};
             
 const parseReceiptLines = (text) => {
     const store = detectStoreType(text);
@@ -411,17 +461,14 @@ const parseReceiptLines = (text) => {
         .map(l => normalizeText(l))
         .filter(Boolean);
 
-    // On enlève les lignes trop parasites au plus tôt
-    lines = lines.filter(l => !isNoiseLine(l));
-
     const results = [];
     let pendingName = null;
+    let lastProductIndex = null;
 
     const pushArticle = (rawName, qte = 1) => {
         const nom = cleanArticleName(rawName);
-        if (!nom || nom.length < 3) return;
+        if (!nom || nom.length < 3) return null;
 
-        // anti faux positifs
         if (
             nom.includes("TOTAL") ||
             nom.includes("MONTANT") ||
@@ -429,13 +476,15 @@ const parseReceiptLines = (text) => {
             nom.includes("TVA") ||
             nom.includes("CARTE") ||
             nom.includes("FIDELITE") ||
-            nom.includes("REMISE")
-        ) return;
+            nom.includes("REMISE") ||
+            nom.includes("REDUCTION") ||
+            nom.includes("BON DE REDUCTION")
+        ) return null;
 
-        const existing = results.find(p => p.nom === nom);
-        if (existing) {
-            existing.qte += qte;
-            return;
+        const existing = results.findIndex(p => p.nom === nom);
+        if (existing !== -1) {
+            results[existing].qte += qte;
+            return existing;
         }
 
         const cat = detectCategory(nom);
@@ -448,73 +497,78 @@ const parseReceiptLines = (text) => {
             rayon: cat.rayon,
             typeStock: "unite"
         });
+
+        return results.length - 1;
     };
 
     for (let i = 0; i < lines.length; i++) {
         const current = lines[i];
-        const prev = i > 0 ? lines[i - 1] : "";
-        const next = i < lines.length - 1 ? lines[i + 1] : "";
-
         const currentUpper = current.toUpperCase();
-        const prevUpper = prev.toUpperCase();
-        const nextUpper = next.toUpperCase();
+
+        if (isNoiseLine(currentUpper) || isWeightedDetailLine(currentUpper)) {
+            continue;
+        }
 
         if (isSectionHeader(currentUpper)) {
-    pendingName = null;
-    continue;
-}
-        
-        // Ligne multiplicateur : 2 X 0,85
-        const multiQty = extractQuantityFromMulti(currentUpper);
-        if (multiQty) {
-            if (pendingName) {
-                pushArticle(pendingName, multiQty);
-                pendingName = null;
-            } else if (prev && !isPriceLine(prevUpper) && !isNoiseLine(prevUpper)) {
-                pushArticle(prevUpper, multiQty);
-            }
+            pendingName = null;
+            lastProductIndex = null;
             continue;
         }
 
-        // Ligne avec prix
+        // Ligne de quantité du type "2 x 2,03 EUR"
+        if (isQuantityLine(currentUpper)) {
+            const qty = extractQuantityFromLine(currentUpper);
+
+            if (qty && lastProductIndex !== null) {
+                results[lastProductIndex].qte = qty;
+                continue;
+            }
+
+            if (qty && pendingName && !isSectionHeader(pendingName)) {
+                lastProductIndex = pushArticle(pendingName, qty);
+                pendingName = null;
+                continue;
+            }
+
+            continue;
+        }
+
+        // Ligne produit avec prix sur la même ligne
         if (isPriceLine(currentUpper)) {
-    let candidate = currentUpper
-        .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
-        .trim();
+            let candidate = currentUpper
+                .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
+                .trim();
 
-            // Si nom + prix sur la même ligne
-            if (cleanArticleName(candidate).length >= 3) {
-                pushArticle(candidate, 1);
+            if (
+                cleanArticleName(candidate).length >= 3 &&
+                !isSectionHeader(candidate) &&
+                !isNoiseLine(candidate)
+            ) {
+                lastProductIndex = pushArticle(candidate, 1);
                 pendingName = null;
                 continue;
             }
 
-            // Sinon nom probablement sur la ligne précédente
-            if (pendingName) {
-                pushArticle(pendingName, 1);
+            if (pendingName && !isSectionHeader(pendingName)) {
+                lastProductIndex = pushArticle(pendingName, 1);
                 pendingName = null;
-                continue;
-            }
-
-            if (prev && !isPriceLine(prevUpper) && !isNoiseLine(prevUpper)) {
-                pushArticle(prevUpper, 1);
                 continue;
             }
 
             continue;
         }
 
-        // Ligne article potentielle sans prix
+        // Ligne article potentielle
+        const cleaned = cleanArticleName(currentUpper);
         if (
-    !isNoiseLine(currentUpper) &&
-    !isSectionHeader(currentUpper)
-) {
-    const cleaned = cleanArticleName(currentUpper);
-
-    if (cleaned.length >= 3) {
-        pendingName = currentUpper;
-    }
-}
+            cleaned.length >= 3 &&
+            !isSectionHeader(currentUpper) &&
+            !isNoiseLine(currentUpper) &&
+            !isWeightedDetailLine(currentUpper)
+        ) {
+            pendingName = currentUpper;
+            lastProductIndex = null;
+        }
     }
 
     return results;
@@ -574,8 +628,11 @@ setReceiptStats({
                 fullText += "\n" + text;
             }
 
-            const items = parseReceiptLines(fullText);
-const ticketQty = extractTicketArticleCount(fullText);
+            const rawText = fullText;
+const itemsText = truncateReceiptForItems(rawText);
+
+const items = parseReceiptLines(itemsText);
+const ticketQty = extractTicketArticleCount(rawText);
 
 setReceiptItems(items);
 setReceiptStats({
@@ -593,8 +650,11 @@ setReceiptStats({
             });
 
             const { data: { text } } = await worker.recognize(source);
-            const items = parseReceiptLines(text);
-const ticketQty = extractTicketArticleCount(text);
+            const rawText = text;
+const itemsText = truncateReceiptForItems(rawText);
+
+const items = parseReceiptLines(itemsText);
+const ticketQty = extractTicketArticleCount(rawText);
 
 setReceiptItems(items);
 setReceiptStats({
