@@ -80,6 +80,13 @@
             const [isScanningBarcode, setIsScanningBarcode] = useState(false);
             const isProcessingBarcode = useRef(false);
 
+            const normalizeText = (str) => {
+    return String(str || "")
+        .replace(/\s+/g, " ")
+        .replace(/[^\S\r\n]+/g, " ")
+        .trim();
+};
+
             const [receiptStats, setReceiptStats] = useState({
     detectedLines: 0,
     detectedQty: 0,
