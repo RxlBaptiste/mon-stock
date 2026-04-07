@@ -20,7 +20,6 @@
         .frozen-style { border-left: 5px solid #3b82f6 !important; background-color: #eff6ff; }
         .animate-up { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        #barcode-ui video { width: 100%; height: 100%; object-fit: cover; border-radius: 2rem; }
     </style>
 </head>
 <body>
@@ -32,9 +31,9 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
         const FRUIT_LIFESPAN = {
-            "FRAISE": 2, "FRAMBOISE": 2, "MURE": 2, "MYRTILLE": 3, "CERISE": 3, "SALADE": 3, "CHAMPIGNON": 3,
-            "POIRE": 7, "TOMATE": 7, "BANANE": 5, "AVOCAT": 4, "POMME": 21, "ORANGE": 14, "CITRON": 20, "KIWI": 15,
-            "POMME DE TERRE": 30, "OIGNON": 30, "AIL": 60, "CAROTTE": 20, "COURGETTE": 6, "AUBERGINE": 6
+            "FRAISE": 2, "FRAMBOISE": 2, "MURE": 2, "MYRTILLE": 3, "SALADE": 3, "CHAMPIGNON": 3,
+            "POIRE": 7, "TOMATE": 7, "BANANE": 5, "AVOCAT": 4, "POMME": 21, "ORANGE": 14, "CITRON": 20,
+            "POMME DE TERRE": 30, "OIGNON": 30, "AIL": 60, "CAROTTE": 20
         };
 
         const STRUCTURE = {
@@ -63,8 +62,6 @@
             const [openSections, setOpenSections] = useState({});
             const [form, setForm] = useState({ nom: "", zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite", stock: 1, date: "", congele: false, maturite: "" });
             const [receiptItems, setReceiptItems] = useState([]);
-            const [isScanningBarcode, setIsScanningBarcode] = useState(false);
-            const isProcessingBarcode = useRef(false);
             const currentUser = localStorage.getItem("stock_user") || "baptiste";
 
             useEffect(() => { if (isLoggedIn) refreshStock(); }, [isLoggedIn, currentUser]);
@@ -95,18 +92,6 @@
                 catch (err) { console.error(err); }
             };
 
-            const updateStock = (id, delta) => {
-                const newP = produits.map(p => {
-                    if (p.id !== id) return p;
-                    let step = p.typeStock === "pourcent" ? 25 : 1;
-                    let next = Number(p.stock) + (delta * step);
-                    if (next <= 0 && delta < 0) { setConfirmDelete({ show: true, produit: p }); return p; }
-                    const u = { ...p, stock: Math.max(0, p.typeStock === "pourcent" ? Math.min(100, next) : next) };
-                    syncWithServer(u); return u;
-                });
-                setProduits(newP);
-            };
-
             const scanTicket = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -129,58 +114,61 @@
                     const worker = await Tesseract.createWorker("fra");
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
-                    const lignes = text.split("\n");
+                    const lignes = text.split("\n").map(l => l.trim().toUpperCase());
                     const res = [];
-                    let stopTicket = false;
 
-                    const nettoyerNom = (nom) => {
-                        let propre = nom.replace(/[*_]/g, "").trim();
-                        // On enlève les indications de poids/prix si elles sont restées
-                        propre = propre.replace(/\d+,\d{2}\s*€\/KG/g, "");
-                        propre = propre.replace(/\d+,\d{3}\s*KG/g, "");
-                        while (propre.endsWith(".") || propre.endsWith(",")) propre = propre.slice(0, -1).trim();
-                        return propre;
-                    };
+                    // --- DETECTION DU MAGASIN ---
+                    const isHyperU = text.toUpperCase().includes("VENTE");
+                    let startIdx = -1;
+                    let endIdx = lignes.length;
 
-                    lignes.forEach((ligne, index) => {
-                        if (stopTicket) return;
-                        let l = ligne.trim().toUpperCase();
-                        
-                        // Détection fin de ticket
-                        if (l.startsWith("TOTAL") || l.includes("ARTICLES") || l.includes("RESTE A PAYER")) {
-                            stopTicket = true;
-                            return;
-                        }
+                    if (isHyperU) {
+                        // Filtre Hyper U
+                        startIdx = lignes.findIndex(l => l.includes("VENTE"));
+                        const finalIdx = lignes.findIndex(l => l.includes("NOMBRE DE LIGNES"));
+                        if (finalIdx !== -1) endIdx = finalIdx;
+                    } else {
+                        // Filtre Leclerc
+                        startIdx = lignes.findIndex(l => l === "€" || l.endsWith(" €"));
+                        const finalIdx = lignes.findIndex(l => l.startsWith("TOTAL"));
+                        if (finalIdx !== -1) endIdx = finalIdx;
+                    }
 
-                        const regexPrixFin = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const matchPrix = l.match(regexPrixFin);
-                        const regexMulti = /^(\d+)\s*[X*x]\s*[\d,.]+/;
-                        const matchCalcul = l.match(regexMulti);
+                    // --- TRAITEMENT DES LIGNES FILTRÉES ---
+                    for (let i = startIdx + 1; i < endIdx; i++) {
+                        let l = lignes[i];
+                        if (l.length < 3) continue;
 
-                        if (matchCalcul || matchPrix) {
-                            const qte = matchCalcul ? parseInt(matchCalcul[1]) : 1;
-                            // Pour Hyper U, on doit remonter plus haut car "Pesée manuelle" prend de la place
-                            for (let i = 1; i <= 6; i++) {
-                                let nomCandidat = lignes[index - i] ? lignes[index - i].trim().toUpperCase() : "";
-                                // On ignore les lignes parasites du ticket U
-                                if (nomCandidat.length > 2 && 
-                                    !nomCandidat.match(regexPrixFin) && 
+                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                        const regexMulti = /^(\d+)\s*[X*]\s*[\d,.]+/;
+
+                        if (l.match(regexPrix) || l.match(regexMulti)) {
+                            const qte = l.match(regexMulti) ? parseInt(l.match(regexMulti)[1]) : 1;
+                            
+                            // Remonter pour trouver le nom (jusqu'à 5 lignes pour la pesée U)
+                            for (let j = 1; j <= 5; j++) {
+                                let nomCandidat = lignes[i - j];
+                                if (!nomCandidat) break;
+
+                                // On ignore les lignes techniques
+                                if (nomCandidat.length > 3 && 
+                                    !nomCandidat.match(regexPrix) && 
+                                    !nomCandidat.match(regexMulti) &&
                                     !nomCandidat.includes("PESÉE") && 
-                                    !nomCandidat.includes("€/KG") &&
-                                    !nomCandidat.includes("KG X") &&
+                                    !nomCandidat.includes("KG") &&
                                     !nomCandidat.includes("---")) {
                                     
-                                    const nomFinal = nettoyerNom(nomCandidat);
-                                    if (nomFinal.length > 2 && !nomFinal.includes("MONTANT") && !nomFinal.includes("CB")) {
-                                        const idx = res.findIndex(p => p.nom === nomFinal);
-                                        if (idx !== -1) { if(matchCalcul) res[idx].qte = qte; }
+                                    let nomFinal = nomCandidat.replace(/[*_]/g, "").split(",")[0].trim();
+                                    if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
+                                        const existe = res.findIndex(p => p.nom === nomFinal);
+                                        if (existe !== -1) { if(qte > 1) res[existe].qte = qte; }
                                         else res.push({ nom: nomFinal, qte: qte, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                                         break;
                                     }
                                 }
                             }
                         }
-                    });
+                    }
                     setReceiptItems(res); await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
             };
@@ -189,6 +177,17 @@
                 const updated = { ...p, congele: p.congele == 1 ? 0 : 1 };
                 setProduits(produits.map(item => item.id === p.id ? updated : item));
                 syncWithServer(updated);
+            };
+
+            const updateStock = (id, delta) => {
+                const newP = produits.map(p => {
+                    if (p.id !== id) return p;
+                    let next = p.typeStock === "pourcent" ? Number(p.stock) + delta * 25 : Number(p.stock) + delta;
+                    if (next <= 0 && delta < 0) { setConfirmDelete({ show: true, produit: p }); return p; }
+                    const u = { ...p, stock: Math.max(0, p.typeStock === "pourcent" ? Math.min(100, next) : next) };
+                    syncWithServer(u); return u;
+                });
+                setProduits(newP);
             };
 
             const handleMaturity = (nom, etatIndex) => {
@@ -240,14 +239,7 @@
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">{item.nom}</span>
-                                            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
-                                                <span className="px-2 font-black text-xs">x{item.qte}</span>
-                                                <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
-                                            </div>
-                                        </div>
+                                        <span className="font-black text-xs uppercase text-gray-700 leading-tight block">{item.nom}</span>
                                         <div className="grid grid-cols-2 gap-2">
                                             <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
                                             <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
@@ -304,7 +296,7 @@
                             <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
                                 {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-30">Liste vide</p> :
                                     produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50 transition-colors">
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
                                             <div className="flex items-center gap-4"><input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => updateStock(p.id, 1)} /><span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span></div>
                                             <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 text-xl">✕</button>
                                         </div>
@@ -333,7 +325,7 @@
                                         <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     )}
                                 </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
                             </div>
                         </div>
@@ -354,7 +346,7 @@
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView("home")} className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}>🏠</button>
-                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
+                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
                         <button onClick={() => setView("shopping")} className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}>🛒</button>
                     </nav>
                 </div>
