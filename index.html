@@ -100,11 +100,16 @@
                 catch (err) { console.error(err); }
             };
 
+            const toggleFreeze = (p) => {
+                const updated = { ...p, congele: p.congele == 1 ? 0 : 1 };
+                setProduits(produits.map(item => item.id === p.id ? updated : item));
+                syncWithServer(updated);
+            };
+
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
-                    let step = p.typeStock === 'pourcent' ? 25 : 1;
-                    let next = Number(p.stock) + (delta * step);
+                    let next = Number(p.stock) + (p.typeStock === 'pourcent' ? delta * 25 : delta);
                     if (next <= 0 && delta < 0) { setConfirmDelete({ show: true, produit: p }); return p; }
                     const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
                     syncWithServer(u); return u;
@@ -112,43 +117,11 @@
                 setProduits(newP);
             };
 
-            const toggleFreeze = (p) => {
-                const updated = { ...p, congele: p.congele == 1 ? 0 : 1 };
-                setProduits(produits.map(item => item.id === p.id ? updated : item));
-                syncWithServer(updated);
-            };
-
-            const startBarcode = () => {
-                setIsScanningBarcode(true);
-                isProcessingBarcode.current = false;
-                setTimeout(() => {
-                    Quagga.init({
-                        inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#barcode-ui'), constraints: { facingMode: "environment" } },
-                        decoder: { readers: ["ean_reader", "ean_8_reader"] },
-                        locate: true
-                    }, (err) => {
-                        if (err) { setIsScanningBarcode(false); return; }
-                        Quagga.start();
-                    });
-                    Quagga.onDetected(async (data) => {
-                        if (isProcessingBarcode.current) return;
-                        isProcessingBarcode.current = true;
-                        const code = data.codeResult.code;
-                        const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                        const json = await res.json();
-                        if (json.status === 1) {
-                            const p = json.product;
-                            setForm({ ...form, nom: (p.product_name_fr || p.product_name || "INCONNU").toUpperCase(), stock: 1 });
-                            setShowAddModal(true); Quagga.stop(); setIsScanningBarcode(false);
-                        } else { isProcessingBarcode.current = false; }
-                    });
-                }, 300);
-            };
-
             const scanTicket = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setLoading(true);
+                setReceiptItems([]);
                 try {
                     let source = "";
                     if (file.type === "application/pdf") {
@@ -156,24 +129,29 @@
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                         const page = await pdf.getPage(1);
                         const canvas = document.createElement("canvas");
-                        const viewport = page.getViewport({ scale: 2.0 });
+                        const viewport = page.getViewport({ scale: 2.5 });
                         canvas.height = viewport.height; canvas.width = viewport.width;
                         await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
                         source = canvas.toDataURL("image/png");
                     } else { source = URL.createObjectURL(file); }
+
                     const worker = await Tesseract.createWorker("fra");
                     const { data: { text } } = await worker.recognize(source);
                     const lignes = text.split("\n");
-                    const res = [];
+                    const results = [];
+                    
                     lignes.forEach((ligne) => {
                         let l = ligne.trim().toUpperCase();
                         const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        if (regexPrix.test(l) && !l.includes("TOTAL")) {
-                            let nF = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                            if (nF.length > 2) res.push({ nom: nF, qte: 1, dlc: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite' });
+                        if (regexPrix.test(l) && !l.includes("TOTAL") && l.length > 5) {
+                            let nomF = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
+                            if (nomF.length > 2) {
+                                results.push({ nom: nomF, qte: 1, dlc: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite' });
+                            }
                         }
                     });
-                    setReceiptItems(res); await worker.terminate();
+                    setReceiptItems(results);
+                    await worker.terminate();
                 } catch (err) { console.error(err); } finally { setLoading(false); }
             };
 
@@ -187,17 +165,17 @@
             };
 
             if (!isLoggedIn) return (
-                <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+                <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6 text-center">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl animate-up">
                         <form onSubmit={(e) => { 
                             e.preventDefault(); 
                             const pass = e.target.p.value; 
                             const users = {"CeciEstMonMotDePasseStock_22":'baptiste',"1912":'soeur',"5678":'pere'}; 
                             if(users[pass]){ localStorage.setItem('stock_user',users[pass]); localStorage.setItem('stock_session','active'); setIsLoggedIn(true); }
                         }} className="space-y-4">
-                            <h2 className="font-black uppercase text-center text-gray-800 tracking-tighter">Mon Stock</h2>
-                            <input name="p" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl focus:border-green-500" />
-                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase">Entrer</button>
+                            <h2 className="font-black uppercase text-gray-800 italic">Mon Stockage</h2>
+                            <input name="p" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl focus:border-green-500 outline-none" />
+                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase">Connexion</button>
                         </form>
                     </div>
                 </div>
@@ -217,38 +195,24 @@
                     </header>
 
                     <main className="p-4">
-                        {/* BARCODE */}
-                        {view === 'home' && !searchTerm && (
-                            <div className="mb-6">
-                                {!isScanningBarcode ? (
-                                    <button onClick={startBarcode} className="w-full p-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-black uppercase text-[10px] shadow-sm flex items-center justify-center gap-3 active:scale-95">📷 Scanner Code-Barre</button>
-                                ) : (
-                                    <div className="relative animate-up h-64 bg-black rounded-[2rem] overflow-hidden border-4 border-green-500" id="barcode-ui">
-                                        <button onClick={() => { Quagga.stop(); setIsScanningBarcode(false); }} className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black z-20">ANNULER</button>
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="w-[80%] h-[2px] bg-green-500 animate-pulse shadow-[0_0_15px_green]"></div></div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         {/* VUE TICKET */}
                         {view === 'receipt' && (
                             <div className="animate-up space-y-4">
                                 <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-300">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
-                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg active:scale-95">📷 PHOTO OU PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse">Analyse...</p>}
+                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg active:scale-95">📷 Charger Photo / PDF</label>
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-                                        <div className="flex justify-between items-center"><span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">{item.nom}</span></div>
+                                        <span className="font-black text-xs uppercase text-gray-700 leading-tight block">{item.nom}</span>
                                         <div className="grid grid-cols-2 gap-2">
                                             <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
                                             <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
                                         </div>
                                     </div>
                                 ))}
-                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:i.typeStock,stock:i.qte,date:i.dlc,congele:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95">Tout Enregistrer 🚀</button>}
+                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:'unite',stock:1,date:'',congele:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95">Tout Ajouter au Stock 🚀</button>}
                             </div>
                         )}
 
@@ -268,7 +232,7 @@
                                         if (rItems.length === 0) return null;
                                         return (
                                             <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2 animate-up">
-                                                <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-3 bg-gray-50/50 flex justify-between text-[9px] font-black uppercase text-gray-400">
+                                                <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-3 bg-gray-50 flex justify-between text-[9px] font-black uppercase text-gray-400">
                                                     <span>{ray.icon} {ray.id}</span>
                                                     <span>{rItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
                                                 </button>
@@ -279,11 +243,10 @@
                                                             <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
                                                             <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.congele == 1 ? 'PAUSE (CONGELÉ) ❄️' : formatFR(p.date)}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">{p.typeStock==='pourcent'?p.stock+'%':'x'+p.stock}</span>
-                                                            <button onClick={() => toggleFreeze(p)} className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${p.congele == 1 ? 'bg-blue-500 text-white border-blue-600 shadow-inner' : 'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
-                                                            <button onClick={() => updateStock(p.id, -1)} className="w-9 h-9 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">-</button>
-                                                            <button onClick={() => updateStock(p.id, 1)} className="w-9 h-9 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">+</button>
+                                                        <div className="flex items-center gap-1">
+                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? 'bg-blue-500 text-white border-blue-600' : 'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
+                                                            <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">-</button>
+                                                            <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">+</button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -296,17 +259,15 @@
 
                         {/* COURSES */}
                         {view === 'shopping' && (
-                            <div className="animate-up space-y-4">
-                                <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden">
-                                    {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-30">Liste vide</p> :
-                                        produits.filter(p => Number(p.stock) === 0).map(p => (
-                                            <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
-                                                <div className="flex items-center gap-4"><input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => updateStock(p.id, 1)} /><span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span></div>
-                                                <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 text-xl">✕</button>
-                                            </div>
-                                        ))
-                                    }
-                                </div>
+                            <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
+                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-30">Liste vide</p> :
+                                    produits.filter(p => Number(p.stock) === 0).map(p => (
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
+                                            <div className="flex items-center gap-4"><input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => updateStock(p.id, 1)} /><span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span></div>
+                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 text-xl">✕</button>
+                                        </div>
+                                    ))
+                                }
                             </div>
                         )}
                     </main>
@@ -324,14 +285,14 @@
                                 <div className="mb-6">
                                     {form.rayon === "Fruits et Légumes" ? (
                                         <div className="space-y-2">
-                                            <div className="flex gap-1">{["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => (<button key={label} onClick={() => handleMaturity(form.nom, idx)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${form.maturite === (idx===0?"Pas mûr":idx===1?"Bientôt mûr":"Mûr") ? 'bg-orange-500 border-orange-600 text-white' : 'bg-gray-50 text-gray-400'}`}>{label}</button>))}</div>
-                                            {form.date && <p className="text-center text-[10px] font-black text-orange-600 italic tracking-tighter">ESTIMÉ AU : {formatFR(form.date)}</p>}
+                                            <div className="flex gap-1">{["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => (<button key={label} onClick={() => handleMaturity(form.nom, idx)} className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase border-2 ${form.maturite === (idx===0?"Pas mûr":idx===1?"Bientôt mûr":"Mûr") ? 'bg-orange-500 border-orange-600 text-white' : 'bg-gray-50 text-gray-400'}`}>{label}</button>))}</div>
+                                            {form.date && <p className="text-center text-[10px] font-black text-orange-600 italic tracking-tighter">PRÉVU LE : {formatFR(form.date)}</p>}
                                         </div>
                                     ) : (
                                         <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     )}
                                 </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
                             </div>
                         </div>
@@ -344,8 +305,8 @@
                                 <h3 className="font-black uppercase text-sm mb-2 text-gray-800 tracking-tighter">Stock épuisé !</h3>
                                 <p className="text-gray-400 text-[9px] mb-8 uppercase font-bold">Ajouter {confirmDelete.produit?.nom} à la liste ?</p>
                                 <div className="flex flex-col gap-3">
-                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all shadow-md">En courses 🛒</button>
-                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Supprimer</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 shadow-md">En courses 🛒</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95">Supprimer</button>
                                 </div>
                             </div>
                         </div>
