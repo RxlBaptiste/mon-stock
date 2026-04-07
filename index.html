@@ -160,7 +160,6 @@
                 if (!file) return;
                 setLoading(true);
                 setReceiptItems([]);
-                console.log("--- DÉBUT DU SCAN ---");
                 try {
                     let source = "";
                     if (file.type === "application/pdf") {
@@ -179,86 +178,84 @@
                     await worker.setParameters({ preserve_interword_spaces: "1" });
                     const { data: { text } } = await worker.recognize(source);
                     
-                    // ON AFFICHE LE TEXTE BRUT POUR VOIR CE QUE L'OCR LIT
                     console.log("TEXTE BRUT RECONNU :", text);
 
-                    const lignes = text.split("\n").map(l => l.trim().toUpperCase());
-                    const res = [];
+                    let lignesBrutes = text.split("\n").map(l => l.trim());
+                    let lignesFiltrees = [];
                     
-                    const isHyperU = text.toUpperCase().includes("VENTE") || text.toUpperCase().includes("LIGNES D'ARTICLE");
-                    
-                    console.log(isHyperU ? "%c MODE : HYPER U " : "%c MODE : LECLERC ", "background: #000; color: #fff; font-weight: bold;");
+                    // --- DÉTECTION DU MODE ET DÉCOUPAGE ---
+                    const isHyperU = text.includes("VENTE") || text.includes("XX");
 
-                    let startReading = false;
-
-                    for (let i = 0; i < lignes.length; i++) {
-                        let l = lignes[i];
-                        if (l.length < 2) continue;
-
-                        // --- LOGIQUE DE DÉBUT / FIN ---
-                        if (isHyperU) {
-                            if (l.includes("VENTE")) { startReading = true; continue; }
-                            if (l.includes("NOMBRE DE LIGNES") || l.includes("RESTE A PAYER")) break;
-                        } else {
-                            // Pour Leclerc, on commence dès qu'on voit un symbole monétaire ou un prix
-                            if (l.includes("€") || l.includes("EUR") || /(\d+[\.,]\d{2})$/.test(l)) { startReading = true; }
-                            if (l.startsWith("TOTAL") || l.includes("RESTE A PAYER")) break;
+                    if (isHyperU) {
+                        console.log("%c MODE : HYPER U ", "background: #ef4444; color: #fff; font-weight: bold;");
+                        // Début : à partir de la ligne contenant "XX"
+                        let idxDebut = lignesBrutes.findIndex(l => l.includes("XX"));
+                        // Fin : s'arrête à la ligne contenant "Nombre"
+                        let idxFin = lignesBrutes.findIndex(l => l.toUpperCase().includes("NOMBRE"));
+                        
+                        if (idxDebut !== -1) {
+                            lignesFiltrees = lignesBrutes.slice(idxDebut + 1, idxFin !== -1 ? idxFin : lignesBrutes.length);
                         }
-
-                        if (!startReading) continue;
-
-                        const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                        const regexMulti = /^(\d+)\s*[X*x]/; // Détecte "2 X" ou "2 *"
-
-                        // 1. GESTION DES QUANTITÉS (Leclerc : ligne 2 X 0.85)
-                        if (regexMulti.test(l) && !l.includes("KG")) {
-                            const qte = parseInt(l.match(regexMulti)[1]);
-                            if (res.length > 0) {
-                                console.log("Quantité mise à jour :", qte);
-                                res[res.length - 1].qte = qte;
-                            }
-                            continue;
-                        }
-
-                        // 2. GESTION DES LIGNES AVEC PRIX (Validation d'un article)
-                        if (regexPrix.test(l)) {
-                            let namePart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                            
-                            // Si la ligne est vide de nom (ex: Hyper U ou prix décalé)
-                            if (namePart.length < 3) {
-                                // On remonte jusqu'à trouver le nom
-                                for (let j = 1; j <= 5; j++) {
-                                    let nomC = lignes[i - j];
-                                    if (!nomC || nomC.length < 3) continue;
-                                    // On ignore les lignes de pesée et de calcul
-                                    if (!nomC.match(regexPrix) && !nomC.match(regexMulti) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---")) {
-                                        let nomFinal = nomC.replace(/[*_]/g, "").split(',')[0].trim();
-                                        if (!res.some(p => p.nom === nomFinal)) {
-                                            res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
-                                        }
-                                        break;
-                                    }
-                                }
-                            } else {
-                                // Nom et prix sur la même ligne (Leclerc)
-                                let nomFinal = namePart.split(',')[0].trim();
-                                if (nomFinal.length > 2 && !nomFinal.includes("TOTAL") && !nomFinal.includes("MONTANT")) {
-                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
-                                }
-                            }
+                    } else {
+                        console.log("%c MODE : LECLERC ", "background: #3b82f6; color: #fff; font-weight: bold;");
+                        // Début : à partir du premier symbole "€"
+                        let idxDebut = lignesBrutes.findIndex(l => l.includes("€"));
+                        // Fin : s'arrête au mot "Total"
+                        let idxFin = lignesBrutes.findIndex(l => l.toUpperCase().includes("TOTAL"));
+                        
+                        if (idxDebut !== -1) {
+                            lignesFiltrees = lignesBrutes.slice(idxDebut + 1, idxFin !== -1 ? idxFin : lignesBrutes.length);
                         }
                     }
 
-                    console.log("RÉSULTAT FINAL :", res);
+                    console.log("LIGNES APRÈS FILTRE :", lignesFiltrees);
+
+                    const res = [];
+                    const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
+                    const regexMulti = /^(\d+)\s*[X*x]/; 
+
+                    lignesFiltrees.forEach((l, index) => {
+                        let ligneUpper = l.toUpperCase();
+                        if (ligneUpper.length < 3) return;
+
+                        // 1. Si c'est une ligne de calcul (ex: 2 X 0.85€)
+                        if (regexMulti.test(ligneUpper) && !ligneUpper.includes("KG")) {
+                            const qte = parseInt(ligneUpper.match(regexMulti)[1]);
+                            if (res.length > 0) res[res.length - 1].qte = qte;
+                            return;
+                        }
+
+                        // 2. Si la ligne finit par un prix, c'est un article
+                        if (regexPrix.test(ligneUpper)) {
+                            let nomPotentiel = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
+                            
+                            // Si le nom est vide ou trop court (cas Hyper U où le nom est au dessus du bloc pesée)
+                            if (nomPotentiel.length < 3) {
+                                // On remonte pour trouver le vrai nom (en sautant Pesée, KG, etc.)
+                                for (let j = 1; j <= 4; j++) {
+                                    let prevL = lignesFiltrees[index - j] ? lignesFiltrees[index - j].toUpperCase() : "";
+                                    if (prevL.length > 3 && !prevL.match(regexPrix) && !prevL.includes("PESÉE") && !prevL.includes("KG")) {
+                                        nomPotentiel = prevL;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Nettoyage final du nom (on enlève les virgules et mentions de poids à la fin)
+                            let nomFinal = nomPotentiel.split(',')[0].trim();
+                            
+                            if (nomFinal.length > 2 && !res.some(p => p.nom === nomFinal)) {
+                                const cat = detectCategory(nomFinal);
+                                res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
+                            }
+                        }
+                    });
+
+                    console.log("ARTICLES EXTRAITS :", res);
                     setReceiptItems(res); 
                     await worker.terminate();
-                } catch (err) { 
-                    console.error("ERREUR SCAN :", err); 
-                } finally { 
-                    setLoading(false); 
-                }
+                } catch (err) { console.error("ERREUR SCAN :", err); } finally { setLoading(false); }
             };
-
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
