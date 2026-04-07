@@ -178,7 +178,11 @@ const cleanArticleName = (str) => {
         .replace(/[*_~#]+/g, " ")
         .replace(/\b\d+\s*[Xx]\s*\d+[.,]\d{2}\b/g, " ")
         .replace(/\b\d+[.,]\d{2}\s*(€|EUR)?\b/g, " ")
-        .replace(/\b\d+[.,]\d{3}\s*KG\b/g, " ")
+        .replace(/\b\d+[.,]\d{3}\s*KG\b/gi, " ")
+        .replace(/\b\d+%MG\b/gi, " ")
+        .replace(/\b\d+%\b/g, " ")
+        .replace(/\b\d+[Kk][Gg]\b/g, " ")
+        .replace(/\b\d+[Gg]\b/g, " ")
         .replace(/\bP.U\.?\b/gi, " ")
         .replace(/\bPRIX\b/gi, " ")
         .replace(/\bPROMO\b/gi, " ")
@@ -189,22 +193,12 @@ const cleanArticleName = (str) => {
         .replace(/\bA\b\s+\d+[.,]\d{2}\b/gi, " ")
         .replace(/\b\d+\b/g, " ")
         .replace(/\s{2,}/g, " ")
-
-        .replace(/\b\d+%MG\b/gi, " ")   // enlève 28%MG
-        .replace(/\b\d+%/g, " ")        // enlève 40%
-        .replace(/\b\d+[Gg]\b/g, " ")   // enlève 160G
-        .replace(/\b\d+[Kk][Gg]\b/g, " ") // enlève 1KG
-
-        .replace(/\b\d+\b/g, " ")
-        .replace(/\s{2,}/g, " ")
         .trim();
 
-    // On garde lettres, espaces, accents, apostrophes, tirets
     s = s.replace(/[^A-ZÀ-ÖØ-öø-ÿ'\-\s]/gi, "").trim();
 
     return s.toUpperCase();
 };
-
 const isPriceLine = (line) => {
     if (!line) return false;
     const l = normalizeText(line).toUpperCase();
@@ -271,7 +265,6 @@ const isNoiseLine = (line) => {
         /APE/,
         /DATE/,
         /HEURE/,
-        /LE /,
         /\bN°\b/,
         /NO CAISSE/,
         /NO TICKET/,
@@ -384,22 +377,7 @@ const extractTicketArticleCount = (text) => {
         "BON DE REDUCTION"
     ];
 
-    if (knownHeaders.includes(l)) return true;
-
-    // souvent les titres rayon sont en majuscules, courts, sans prix
-    const onlyLettersSpaces = /^[A-ZÀ-ÖØ-öø-ÿ\s'&\-]+$/.test(l);
-    const wordCount = l.split(/\s+/).filter(Boolean).length;
-
-    if (
-        onlyLettersSpaces &&
-        wordCount <= 4 &&
-        l.length >= 4 &&
-        !isPriceLine(l)
-    ) {
-        return true;
-    }
-
-    return false;
+    return knownHeaders.includes(l);
 };
 
             const truncateReceiptForItems = (text) => {
