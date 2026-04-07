@@ -191,6 +191,15 @@ const cleanArticleName = (str) => {
         .replace(/\s{2,}/g, " ")
         .trim();
 
+        .replace(/\b\d+%MG\b/gi, " ")   // enlève 28%MG
+        .replace(/\b\d+%/g, " ")        // enlève 40%
+        .replace(/\b\d+[Gg]\b/g, " ")   // enlève 160G
+        .replace(/\b\d+[Kk][Gg]\b/g, " ") // enlève 1KG
+
+        .replace(/\b\d+\b/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
     // On garde lettres, espaces, accents, apostrophes, tirets
     s = s.replace(/[^A-ZÀ-ÖØ-öø-ÿ'\-\s]/gi, "").trim();
 
@@ -201,9 +210,10 @@ const isPriceLine = (line) => {
     if (!line) return false;
     const l = normalizeText(line).toUpperCase();
 
-    return /(\d+[.,]\d{2})\s*(€|EUR)?\s*$/.test(l)
+    return /(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/.test(l)
         || /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(l)
-        || /\bA\s+\d+[.,]\d{2}\b/.test(l);
+        || /\bA\s+\d+[.,]\d{2}\b/.test(l)
+        || /\d+[.,]\d{2}\s*€\s*\d{1,2}\s*$/.test(l);
 };
 
 const extractPrice = (line) => {
@@ -276,7 +286,11 @@ const isNoiseLine = (line) => {
         /EUROS GAGNES/,
         /ARTICLES/,
         /NOMBRE D['’]ARTICLES/,
-        /POUR NOUS CONTACTER/
+        /POUR NOUS CONTACTER/,
+        /PESEE MANUELLE/,
+ /PESÉE MANUELLE/,
+ /KG\s*X/,
+ /€\/KG/
     ];
 
     if (noisePatterns.some(rx => rx.test(l))) return true;
@@ -314,19 +328,25 @@ const extractTicketArticleCount = (text) => {
     for (const line of lines) {
         let match = null;
 
-        // Cas très fréquent : "TOTAL 4 ARTICLES"
+        // Leclerc : TOTAL 4 ARTICLES
         match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
         if (match) return parseInt(match[1], 10);
 
-        // Cas : "NOMBRE D'ARTICLES : 4"
+        // Hyper U : TOTAL [31] ARTICLES
+        match = line.match(/TOTAL\s*\[(\d+)\]\s*ARTICLES?/i);
+        if (match) return parseInt(match[1], 10);
+
+        // Hyper U : NOMBRE DE LIGNES D'ARTICLE 27
+        match = line.match(/NOMBRE\s+DE\s+LIGNES?\s+D['’]ARTICLE\s+(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+
+        // Cas classique
         match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
         if (match) return parseInt(match[1], 10);
 
-        // Cas : "NB ARTICLES 4"
         match = line.match(/NB\s+ARTICLES?\s*[:\-]?\s*(\d+)/i);
         if (match) return parseInt(match[1], 10);
 
-        // Cas : "4 ARTICLES"
         match = line.match(/\b(\d+)\s+ARTICLES?\b/i);
         if (match) return parseInt(match[1], 10);
     }
@@ -405,7 +425,9 @@ const parseReceiptLines = (text) => {
 
         // Ligne avec prix
         if (isPriceLine(currentUpper)) {
-            let candidate = currentUpper.replace(/(\d+[.,]\d{2})\s*(€|EUR)?\s*$/, "").trim();
+    let candidate = currentUpper
+        .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
+        .trim();
 
             // Si nom + prix sur la même ligne
             if (cleanArticleName(candidate).length >= 3) {
