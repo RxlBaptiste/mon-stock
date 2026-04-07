@@ -460,7 +460,8 @@ const parseReceiptLines = (text) => {
     if (!file) return;
 
     setLoading(true);
-    setReceiptItems({
+setReceiptItems([]);
+setReceiptStats({
     detectedLines: 0,
     detectedQty: 0,
     ticketQty: null
