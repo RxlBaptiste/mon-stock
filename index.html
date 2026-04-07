@@ -327,19 +327,19 @@ const extractTicketArticleCount = (text) => {
     for (const line of lines) {
         let match = null;
 
-        // Leclerc : TOTAL 4 ARTICLES
-        match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
-        if (match) return parseInt(match[1], 10);
-
-        // Hyper U : TOTAL [31] ARTICLES
+        // PRIORITÉ 1 : Hyper U -> TOTAL [31] Articles
         match = line.match(/TOTAL\s*\[(\d+)\]\s*ARTICLES?/i);
         if (match) return parseInt(match[1], 10);
 
-        // Hyper U : NOMBRE DE LIGNES D'ARTICLE 27
-        match = line.match(/NOMBRE\s+DE\s+LIGNES?\s+D['’]ARTICLE\s+(\d+)/i);
+        // PRIORITÉ 2 : Leclerc -> TOTAL 4 ARTICLES
+        match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
         if (match) return parseInt(match[1], 10);
+    }
 
-        // Cas classique
+    // Si rien trouvé, on cherche les formats secondaires
+    for (const line of lines) {
+        let match = null;
+
         match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
         if (match) return parseInt(match[1], 10);
 
@@ -347,6 +347,10 @@ const extractTicketArticleCount = (text) => {
         if (match) return parseInt(match[1], 10);
 
         match = line.match(/\b(\d+)\s+ARTICLES?\b/i);
+        if (match) return parseInt(match[1], 10);
+
+        // En dernier seulement : nombre de lignes
+        match = line.match(/NOMBRE\s+DE\s+LIGNES?\s+D['’]ARTICLE\s+(\d+)/i);
         if (match) return parseInt(match[1], 10);
     }
 
