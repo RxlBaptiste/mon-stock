@@ -54,7 +54,6 @@
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState("");
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: "", zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite", stock: 1, date: "", congele: false });
             const [receiptItems, setReceiptItems] = useState([]);
             const currentUser = localStorage.getItem("stock_user") || "baptiste";
 
@@ -83,10 +82,11 @@
                         const arrayBuffer = await file.arrayBuffer();
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                         const page = await pdf.getPage(1);
-                        const canvas = document.createElement("canvas");
                         const viewport = page.getViewport({ scale: 2.5 });
+                        const canvas = document.createElement("canvas");
+                        const context = canvas.getContext("2d");
                         canvas.height = viewport.height; canvas.width = viewport.width;
-                        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
                         source = canvas.toDataURL("image/png");
                     } else { source = URL.createObjectURL(file); }
 
@@ -96,58 +96,62 @@
                     const res = [];
                     
                     const isHyperU = text.includes("VENTE");
+                    let lastValidName = "";
+                    let startReading = false;
 
-                    if (isHyperU) {
-                        // --- LOGIQUE HYPER U ---
-                        let start = lignes.findIndex(l => l.includes("VENTE"));
-                        let end = lignes.findIndex(l => l.includes("NOMBRE DE LIGNES"));
-                        if (end === -1) end = lignes.length;
+                    for (let i = 0; i < lignes.length; i++) {
+                        let l = lignes[i];
+                        if (l.length < 3) continue;
 
-                        for (let i = start + 1; i < end; i++) {
-                            let l = lignes[i];
-                            const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                            if (regexPrix.test(l)) {
-                                // On remonte pour trouver le nom en ignorant les lignes de poids
-                                for (let j = 1; j <= 6; j++) {
-                                    let nomC = lignes[i - j];
-                                    if (!nomC || nomC.length < 3) continue;
-                                    if (!nomC.match(regexPrix) && !nomC.includes("PESÉE") && !nomC.includes("KG") && !nomC.includes("---")) {
-                                        let cleanName = nomC.replace(/[*_]/g, "").split(',')[0].trim();
-                                        if (cleanName.length > 2 && !cleanName.includes("MONTANT")) {
-                                            res.push({ nom: cleanName, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
+                        // Gestion des bornes de début/fin
+                        if (isHyperU) {
+                            if (l.includes("VENTE")) { startReading = true; continue; }
+                            if (l.includes("NOMBRE DE LIGNES")) break;
+                        } else {
+                            if (l === "€" || l === "EUR" || l.endsWith(" €")) { startReading = true; continue; }
+                            if (l.startsWith("TOTAL")) break;
                         }
-                    } else {
-                        // --- LOGIQUE LECLERC ---
-                        // Début après le symbole € isolé, fin à TOTAL
-                        let start = lignes.findIndex(l => l === "€" || l === "EUR");
-                        let end = lignes.findIndex(l => l.startsWith("TOTAL"));
-                        if (end === -1) end = lignes.length;
 
-                        for (let i = start + 1; i < end; i++) {
-                            let l = lignes[i];
-                            // Ignorer les très longs nombres (code barres OCR mal lu)
-                            if (l.replace(/\s/g, "").length > 15 && /^\d+$/.test(l.replace(/\s/g, ""))) continue;
+                        if (!startReading) continue;
 
-                            const regexPrix = /(\d+[\.,]\d{2})$/;
-                            const regexMultiLeclerc = /^(\d+)\s*[X]\s*[\d,.]+€?$/; // Détecte "2 X 0.85€"
+                        const regexPrix = /(\d+[\.,]\d{2})$/; // Fin de ligne avec prix
+                        const regexMulti = /^(\d+)\s*[X]\s*[\d,.]+€?$/; // Ligne "2 X 0.85"
 
-                            if (l.match(regexMultiLeclerc)) {
-                                const qte = parseInt(l.match(regexMultiLeclerc)[1]);
-                                if (res.length > 0) res[res.length - 1].qte = qte;
-                            } else if (regexPrix.test(l)) {
-                                let name = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                                // Si le nom est sur la ligne d'avant (car prix décalé)
-                                if (name.length < 3) name = lignes[i-1].replace(/[*_]/g, "").trim();
-                                
-                                if (name.length > 2 && !name.includes("TOTAL") && !name.includes("ARTICLES")) {
-                                    res.push({ nom: name, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Boulangerie", typeStock: "unite" });
+                        // 1. Si c'est une ligne de calcul (Leclerc)
+                        if (regexMulti.test(l)) {
+                            const qte = parseInt(l.match(regexMulti)[1]);
+                            if (res.length > 0) res[res.length - 1].qte = qte;
+                            continue;
+                        }
+
+                        // 2. Si c'est une ligne de prix
+                        if (regexPrix.test(l)) {
+                            let namePart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
+                            
+                            // Si la ligne contient un prix mais pas de nom (nom au dessus)
+                            if (namePart.length < 3) {
+                                if (lastValidName) {
+                                    res.push({ nom: lastValidName, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
+                                    lastValidName = "";
+                                }
+                            } else {
+                                // Nom et prix sur la même ligne (Leclerc)
+                                let nomFinal = namePart.split(',')[0].trim();
+                                if (nomFinal.length > 2 && !nomFinal.includes("MONTANT")) {
+                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                                 }
                             }
+                            continue;
+                        }
+
+                        // 3. C'est peut-être un nom de produit seul (Hyper U pesée ou Leclerc prix décalé)
+                        if (l.length > 3 && 
+                            !l.includes("PESÉE") && 
+                            !l.includes("KG") && 
+                            !l.includes("---") && 
+                            !l.includes("TVA") &&
+                            !/^\d+$/.test(l.replace(/\s/g, ""))) {
+                            lastValidName = l.split(',')[0].trim();
                         }
                     }
 
@@ -195,8 +199,8 @@
                     <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm flex justify-between items-center">
                         <h1 className="font-black italic text-lg uppercase text-green-600 underline">MON STOCKAGE</h1>
                         <div className="flex gap-2">
-                            <button onClick={() => setView("receipt")} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">🧾 Ticket</button>
-                            <button onClick={() => setView(view === "home" ? "shopping" : "home")} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase">{view === "home" ? "Courses" : "Stock"}</button>
+                            <button onClick={() => setView("receipt")} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">🧾 Ticket</button>
+                            <button onClick={() => setView(view === "home" ? "shopping" : "home")} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">{view === "home" ? "Courses" : "Stock"}</button>
                         </div>
                     </header>
 
@@ -206,7 +210,7 @@
                                 <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-300">
                                     <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
                                     <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg active:scale-95">📷 Charger Photo / PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
+                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse">Analyse en cours...</p>}
                                 </div>
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
@@ -219,12 +223,12 @@
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
+                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>{Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}</select>
+                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>{STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}</select>
                                         </div>
                                     </div>
                                 ))}
-                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:'unite',stock:i.qte,date:"",congele:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95">Tout Ajouter au Stock 🚀</button>}
+                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:'unite',stock:i.qte,date:"",congele:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95">Tout Ajouter au Stock 🚀</button>}
                             </div>
                         )}
 
@@ -253,7 +257,7 @@
                                                             <span className="text-[9px] text-gray-400 italic font-bold uppercase">{p.congele == 1 ? "❄️ CONGELÉ" : p.date || "SANS DATE"}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1">
-                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white" : "text-gray-200"}`}>❄️</button>
+                                                            <button onClick={() => toggleFreeze(p)} className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white border-blue-600 shadow-inner" : "bg-white text-gray-200"}`}>❄️</button>
                                                             <button onClick={() => updateStock(p.id, -1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">-</button>
                                                             <button onClick={() => updateStock(p.id, 1)} className="w-8 h-8 bg-white border border-gray-100 rounded-lg font-bold shadow-sm">+</button>
                                                         </div>
@@ -269,7 +273,7 @@
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView("home")} className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}>🏠</button>
-                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
+                        <button onClick={() => refreshStock()} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
                         <button onClick={() => setView("shopping")} className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}>🛒</button>
                     </nav>
                 </div>
