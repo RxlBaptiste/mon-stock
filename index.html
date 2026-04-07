@@ -145,7 +145,6 @@
                         if (stopTicket) return;
                         let l = ligne.trim().toUpperCase();
                         
-                        // ARRET STRICT : Si on trouve TOTAL, on stoppe tout pour Leclerc et Hyper U
                         if (l.startsWith("TOTAL") || l.includes("ARTICLES") || l.includes("RESTE A PAYER")) {
                             stopTicket = true;
                             return;
@@ -158,11 +157,14 @@
 
                         if (matchCalcul) {
                             const qte = parseInt(matchCalcul[1]);
-                            for (let i = 1; i <= 3; i++) {
+                            // On remonte jusqu'à 4 lignes pour ignorer "Pesée manuelle" ou le détail du poids (Hyper U)
+                            for (let i = 1; i <= 4; i++) {
                                 let nomCandidat = lignes[index - i] ? lignes[index - i].trim().toUpperCase() : "";
-                                if (nomCandidat.length > 2 && !nomCandidat.match(regexPrixFin)) {
+                                if (nomCandidat.length > 2 && 
+                                    !nomCandidat.match(regexPrixFin) && 
+                                    !nomCandidat.includes("PESÉE") && 
+                                    !nomCandidat.includes(" KG ")) {
                                     const nomFinal = nettoyerNom(nomCandidat);
-                                    // Exclusion des mots parasites
                                     if (nomFinal.length > 2 && !nomFinal.includes("MONTANT") && !nomFinal.includes("CB")) {
                                         const idx = res.findIndex(p => p.nom === nomFinal);
                                         if (idx !== -1) res[idx].qte = qte;
@@ -302,7 +304,7 @@
                             <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
                                 {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-16 text-center text-gray-300 italic text-[10px] uppercase font-black tracking-widest opacity-30">Liste vide</p> :
                                     produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
+                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50 transition-colors">
                                             <div className="flex items-center gap-4"><input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg" onChange={() => updateStock(p.id, 1)} /><span className="font-bold text-sm text-gray-700 uppercase">{p.nom}</span></div>
                                             <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 text-xl">✕</button>
                                         </div>
@@ -331,15 +333,28 @@
                                         <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     )}
                                 </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {confirmDelete.show && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6 text-center">
+                            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up">
+                                <h3 className="font-black uppercase text-sm mb-2 text-gray-800 tracking-tighter">Stock épuisé !</h3>
+                                <p className="text-gray-400 text-[9px] mb-8 uppercase font-bold">Ajouter {confirmDelete.produit?.nom} à la liste ?</p>
+                                <div className="flex flex-col gap-3">
+                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all shadow-md">En courses 🛒</button>
+                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Supprimer</button>
+                                </div>
                             </div>
                         </div>
                     )}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView("home")} className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}>🏠</button>
-                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
+                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
                         <button onClick={() => setView("shopping")} className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}>🛒</button>
                     </nav>
                 </div>
