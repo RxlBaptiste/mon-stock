@@ -75,7 +75,17 @@
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({ nom: '', zone: 'Alimentaire', rayon: 'Fruits et Légumes', typeStock: 'unite', stock: 1, date: '', directShopping: false, congele: false });
+            const [form, setForm] = useState({
+    nom: '',
+    zone: 'Alimentaire',
+    rayon: 'Fruits et Légumes',
+    typeStock: 'unite',
+    stock: 1,
+    date: '',
+    maturite: '',
+    directShopping: false,
+    congele: false
+});
             const [receiptItems, setReceiptItems] = useState([]);
             const [isScanningBarcode, setIsScanningBarcode] = useState(false);
             const isProcessingBarcode = useRef(false);
@@ -115,6 +125,125 @@
                 const ex = produits.find(p => p.nom.toUpperCase() === n);
                 return ex ? { zone: ex.zone, rayon: ex.rayon } : { zone: "Alimentaire", rayon: "Autres" };
             };
+
+            const PRODUCE_LIFESPAN = {
+    "FRAISE": 2,
+    "FRAMBOISE": 2,
+    "MURE": 2,
+    "MYRTILLE": 3,
+    "GROSEILLE": 3,
+    "CERISE": 3,
+    "RAISIN": 5,
+    "FIGUE": 3,
+    "ABRICOT": 4,
+    "PRUNE": 5,
+    "PECHE": 5,
+    "NECTARINE": 5,
+    "MELON": 5,
+    "PASTEQUE": 5,
+    "ANANAS": 6,
+    "MANGUE": 6,
+    "PAPAYE": 4,
+    "KIWI": 15,
+    "POIRE": 7,
+    "POMME": 21,
+    "BANANE": 5,
+    "AVOCAT": 4,
+    "ORANGE": 14,
+    "CLEMENTINE": 14,
+    "MANDARINE": 12,
+    "CITRON": 20,
+    "PAMPLEMOUSSE": 14,
+
+    "SALADE": 3,
+    "LAITUE": 3,
+    "MACHE": 3,
+    "ROQUETTE": 3,
+    "EPINARD": 3,
+    "CHAMPIGNON": 3,
+    "ASPERGE": 4,
+    "HARICOT VERT": 5,
+    "PETIT POIS": 4,
+    "BROCOLI": 5,
+    "CHOU-FLEUR": 6,
+    "CHOU FLEUR": 6,
+    "CHOU": 8,
+    "POIREAU": 8,
+    "COURGETTE": 6,
+    "AUBERGINE": 6,
+    "CONCOMBRE": 6,
+    "TOMATE": 7,
+    "POIVRON": 8,
+    "CAROTTE": 20,
+    "NAVET": 12,
+    "RADIS": 7,
+    "BETTERAVE": 14,
+    "CELERI": 10,
+    "FENOUIL": 7,
+    "ENDIVE": 7,
+    "OIGNON": 30,
+    "ECHALOTE": 30,
+    "AIL": 60,
+    "POMME DE TERRE": 30,
+    "PATATE DOUCE": 20,
+    "PANAIS": 14,
+    "TOPINAMBOUR": 10,
+    "ARTICHAUT": 5
+};
+const getProduceBaseLife = (nom) => {
+    const upperName = (nom || "").toUpperCase();
+
+    const sortedKeys = Object.keys(PRODUCE_LIFESPAN).sort((a, b) => b.length - a.length);
+
+    for (const key of sortedKeys) {
+        if (upperName.includes(key)) {
+            return {
+                label: key,
+                days: PRODUCE_LIFESPAN[key]
+            };
+        }
+    }
+
+    return {
+        label: null,
+        days: 5
+    };
+};
+
+const getMaturityConfig = (etatIndex) => {
+    const configs = [
+        { label: "Pas mûr", coeff: 1.5 },
+        { label: "Bientôt mûr", coeff: 1.0 },
+        { label: "Mûr", coeff: 0.5 }
+    ];
+
+    return configs[etatIndex] || configs[1];
+};
+
+const getEstimatedDateFromProduce = (nom, etatIndex) => {
+    const produce = getProduceBaseLife(nom);
+    const maturity = getMaturityConfig(etatIndex);
+
+    const d = new Date();
+    d.setDate(d.getDate() + Math.round(produce.days * maturity.coeff));
+
+    return {
+        date: d.toISOString().split("T")[0],
+        maturite: maturity.label,
+        matchedProduce: produce.label
+    };
+};
+
+const handleMaturity = (nom, etatIndex) => {
+    const result = getEstimatedDateFromProduce(nom, etatIndex);
+
+    setForm({
+        ...form,
+        date: result.date,
+        maturite: result.maturite
+    });
+};
+            
 
             // --- SCANNER CODE-BARRES ---
             const startBarcode = () => {
@@ -982,14 +1111,79 @@ setReceiptStats({
                                     <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.zone} onChange={e => setForm({...form, zone: e.target.value, rayon: STRUCTURE[e.target.value].rayons[0].id})}>
                                         {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                     </select>
-                                    <select className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.rayon} onChange={e => setForm({...form, rayon: e.target.value})}>
-                                        {STRUCTURE[form.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
-                                    </select>
+                                    <select
+    className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+    value={form.rayon}
+    onChange={e => setForm({
+        ...form,
+        rayon: e.target.value,
+        ...(e.target.value !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
+    })}
+>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-6">
-                                    <input type="date" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
-                                    <input type="number" placeholder="QTÉ" className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
-                                </div>
+                                <div className="mb-6 space-y-3">
+    {form.rayon === "Fruits et Légumes" ? (
+        <div className="space-y-3">
+            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
+                État de maturité :
+            </p>
+
+            <div className="flex gap-1">
+                {["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => {
+                    const trueLabel = idx === 0 ? "Pas mûr" : idx === 1 ? "Bientôt mûr" : "Mûr";
+
+                    return (
+                        <button
+                            key={label}
+                            type="button"
+                            onClick={() => handleMaturity(form.nom, idx)}
+                            className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${
+                                form.maturite === trueLabel
+                                    ? 'bg-orange-500 border-orange-600 text-white shadow-lg'
+                                    : 'bg-gray-50 border-transparent text-gray-400'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <input
+                type="date"
+                className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
+            />
+
+            {form.date && (
+                <p className="text-center text-[9px] font-bold text-orange-600 uppercase">
+                    Prévu jusqu’au : {form.date.split("-").reverse().join("/")}
+                </p>
+            )}
+        </div>
+    ) : (
+        <div className="space-y-2">
+            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
+                Date de péremption :
+            </p>
+            <input
+                type="date"
+                className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
+            />
+        </div>
+    )}
+
+    <input
+        type="number"
+        placeholder="QTÉ"
+        className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+        value={form.stock}
+        onChange={e => setForm({ ...form, stock: Number(e.target.value) })}
+    />
+</div>
                                 <div className="space-y-3 mb-8">
                                     <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
                                         <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
@@ -1001,8 +1195,28 @@ setReceiptStats({
                                     </label>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <button onClick={async () => { const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',directShopping:false,congele:false}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95 transition-all">Enregistrer ✅</button>
-                                    <button onClick={() => { setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',directShopping:false,congele:false}); }} className="w-full text-gray-300 text-[10px] font-black uppercase text-center py-2">Annuler</button>
+                                    <button onClick={async () => { const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({
+    nom: '',
+    zone: 'Alimentaire',
+    rayon: 'Fruits et Légumes',
+    typeStock: 'unite',
+    stock: 1,
+    date: '',
+    maturite: '',
+    directShopping: false,
+    congele: false
+}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95 transition-all">Enregistrer ✅</button>
+                                    <button onClick={() => { setShowAddModal(false); setForm({
+    nom: '',
+    zone: 'Alimentaire',
+    rayon: 'Fruits et Légumes',
+    typeStock: 'unite',
+    stock: 1,
+    date: '',
+    maturite: '',
+    directShopping: false,
+    congele: false
+}); }} className="w-full text-gray-300 text-[10px] font-black uppercase text-center py-2">Annuler</button>
                                 </div>
                             </div>
                         </div>
