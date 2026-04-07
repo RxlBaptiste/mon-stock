@@ -246,9 +246,9 @@ const isNoiseLine = (line) => {
         /CAISS/,
         /HOTE[S]?SE/,
         /TVA/,
-        /TEL/,
-        /T[ÉE]L/,
-        /ADRESSE/,
+    /\bTEL\b/,
+    /\bT[ÉE]L\b/,
+    /ADRESSE/,
         /SITE INTERNET/,
         /WWW/,
         /MERCI/,
@@ -408,16 +408,33 @@ const isQuantityLine = (line) => {
     if (!line) return false;
     const l = normalizeText(line).toUpperCase();
 
-    return /^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i.test(l);
+    return /^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i.test(l);
 };
 
 const extractQuantityFromLine = (line) => {
     if (!line) return null;
     const l = normalizeText(line).toUpperCase();
-    const m = l.match(/^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
+
+    const m = l.match(/^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
     return m ? parseInt(m[1], 10) : null;
 };
 
+const extractUnitPriceFromQuantityLine = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+
+    const m = l.match(/^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
+    return m ? parseFloat(m[3].replace(",", ".")) : null;
+};
+
+const extractTrailingPrice = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+
+    const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/);
+    return m ? parseFloat(m[1].replace(",", ".")) : null;
+};
+            
 const isWeightedDetailLine = (line) => {
     if (!line) return false;
     const l = normalizeText(line).toUpperCase();
@@ -432,8 +449,6 @@ const isWeightedDetailLine = (line) => {
 };
             
 const parseReceiptLines = (text) => {
-    const store = detectStoreType(text);
-
     let lines = text
         .split("\n")
         .map(l => normalizeText(l))
@@ -442,6 +457,7 @@ const parseReceiptLines = (text) => {
     const results = [];
     let pendingName = null;
     let lastProductIndex = null;
+    let lastProductTotalPrice = null;
 
     const pushArticle = (rawName, qte = 1) => {
         const nom = cleanArticleName(rawName);
@@ -490,15 +506,26 @@ const parseReceiptLines = (text) => {
         if (isSectionHeader(currentUpper)) {
             pendingName = null;
             lastProductIndex = null;
+            lastProductTotalPrice = null;
             continue;
         }
 
-        // Ligne de quantité du type "2 x 2,03 EUR"
+        // Ligne quantité : ex "2 x 1,89 EUR"
         if (isQuantityLine(currentUpper)) {
             const qty = extractQuantityFromLine(currentUpper);
+            const unitPrice = extractUnitPriceFromQuantityLine(currentUpper);
 
             if (qty && lastProductIndex !== null) {
-                results[lastProductIndex].qte = qty;
+                // Si on a aussi le prix total du produit précédent, on vérifie
+                if (
+                    unitPrice !== null &&
+                    lastProductTotalPrice !== null &&
+                    Math.abs((qty * unitPrice) - lastProductTotalPrice) < 0.03
+                ) {
+                    results[lastProductIndex].qte = qty;
+                } else if (unitPrice === null || lastProductTotalPrice === null) {
+                    results[lastProductIndex].qte = qty;
+                }
                 continue;
             }
 
@@ -517,6 +544,8 @@ const parseReceiptLines = (text) => {
                 .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
                 .trim();
 
+            const totalPrice = extractTrailingPrice(currentUpper);
+
             if (
                 cleanArticleName(candidate).length >= 3 &&
                 !isSectionHeader(candidate) &&
@@ -524,12 +553,14 @@ const parseReceiptLines = (text) => {
             ) {
                 lastProductIndex = pushArticle(candidate, 1);
                 pendingName = null;
+                lastProductTotalPrice = totalPrice;
                 continue;
             }
 
             if (pendingName && !isSectionHeader(pendingName)) {
                 lastProductIndex = pushArticle(pendingName, 1);
                 pendingName = null;
+                lastProductTotalPrice = totalPrice;
                 continue;
             }
 
@@ -546,12 +577,12 @@ const parseReceiptLines = (text) => {
         ) {
             pendingName = currentUpper;
             lastProductIndex = null;
+            lastProductTotalPrice = null;
         }
     }
 
     return results;
 };
-
 
 
 
