@@ -134,9 +134,10 @@
                     let stopTicket = false;
 
                     const nettoyerNom = (nom) => {
-                        const firstDigit = nom.search(/\d/);
-                        let propre = firstDigit !== -1 ? nom.substring(0, firstDigit) : nom;
-                        propre = propre.replace(/[*_]/g, "").trim();
+                        let propre = nom.replace(/[*_]/g, "").trim();
+                        // On enlève les indications de poids/prix si elles sont restées
+                        propre = propre.replace(/\d+,\d{2}\s*€\/KG/g, "");
+                        propre = propre.replace(/\d+,\d{3}\s*KG/g, "");
                         while (propre.endsWith(".") || propre.endsWith(",")) propre = propre.slice(0, -1).trim();
                         return propre;
                     };
@@ -145,6 +146,7 @@
                         if (stopTicket) return;
                         let l = ligne.trim().toUpperCase();
                         
+                        // Détection fin de ticket
                         if (l.startsWith("TOTAL") || l.includes("ARTICLES") || l.includes("RESTE A PAYER")) {
                             stopTicket = true;
                             return;
@@ -155,29 +157,27 @@
                         const regexMulti = /^(\d+)\s*[X*x]\s*[\d,.]+/;
                         const matchCalcul = l.match(regexMulti);
 
-                        if (matchCalcul) {
-                            const qte = parseInt(matchCalcul[1]);
-                            // On remonte jusqu'à 4 lignes pour ignorer "Pesée manuelle" ou le détail du poids (Hyper U)
-                            for (let i = 1; i <= 4; i++) {
+                        if (matchCalcul || matchPrix) {
+                            const qte = matchCalcul ? parseInt(matchCalcul[1]) : 1;
+                            // Pour Hyper U, on doit remonter plus haut car "Pesée manuelle" prend de la place
+                            for (let i = 1; i <= 6; i++) {
                                 let nomCandidat = lignes[index - i] ? lignes[index - i].trim().toUpperCase() : "";
+                                // On ignore les lignes parasites du ticket U
                                 if (nomCandidat.length > 2 && 
                                     !nomCandidat.match(regexPrixFin) && 
                                     !nomCandidat.includes("PESÉE") && 
-                                    !nomCandidat.includes(" KG ")) {
+                                    !nomCandidat.includes("€/KG") &&
+                                    !nomCandidat.includes("KG X") &&
+                                    !nomCandidat.includes("---")) {
+                                    
                                     const nomFinal = nettoyerNom(nomCandidat);
                                     if (nomFinal.length > 2 && !nomFinal.includes("MONTANT") && !nomFinal.includes("CB")) {
                                         const idx = res.findIndex(p => p.nom === nomFinal);
-                                        if (idx !== -1) res[idx].qte = qte;
+                                        if (idx !== -1) { if(matchCalcul) res[idx].qte = qte; }
                                         else res.push({ nom: nomFinal, qte: qte, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                                         break;
                                     }
                                 }
-                            }
-                        } else if (matchPrix) {
-                            let nomBrut = l.replace(regexPrixFin, "").trim();
-                            const nomFinal = nettoyerNom(nomBrut);
-                            if (nomFinal.length > 2 && !nomFinal.includes("MONTANT") && !nomFinal.includes("CB") && !res.some(p => p.nom === nomFinal)) {
-                                res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: "Alimentaire", rayon: "Fruits et Légumes", typeStock: "unite" });
                             }
                         }
                     });
@@ -333,7 +333,7 @@
                                         <input type="date" className="w-full p-3 bg-gray-50 rounded-xl text-sm font-bold outline-none" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                     )}
                                 </div>
-                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
+                                <button onClick={async () => { const n={...form,id:Date.now(),stock:Number(form.stock),congele:form.congele?1:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">Enregistrer ✅</button>
                                 <button onClick={() => setShowAddModal(false)} className="w-full text-gray-300 text-[10px] font-black uppercase mt-4">Annuler</button>
                             </div>
                         </div>
@@ -354,7 +354,7 @@
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView("home")} className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}>🏠</button>
-                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light">＋</button>
+                        <button onClick={() => { setForm({nom:'',zone:'Alimentaire',rayon:'Fruits et Légumes',typeStock:'unite',stock:1,date:'',congele:false,maturite:''}); setShowAddModal(true); }} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all">＋</button>
                         <button onClick={() => setView("shopping")} className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}>🛒</button>
                     </nav>
                 </div>
