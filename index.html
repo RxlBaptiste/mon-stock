@@ -405,26 +405,17 @@ const extractTicketArticleCount = (text) => {
 };
 
 const isQuantityLine = (line) => {
-    if (!line) return false;
-    const l = normalizeText(line).toUpperCase();
-
-    return /^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i.test(l);
+    return extractQuantityInfo(line) !== null;
 };
 
 const extractQuantityFromLine = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-
-    const m = l.match(/^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
-    return m ? parseInt(m[1], 10) : null;
+    const info = extractQuantityInfo(line);
+    return info ? info.qty : null;
 };
 
 const extractUnitPriceFromQuantityLine = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-
-    const m = l.match(/^(\d+)\s*([Xx*])\s*(\d+[.,]\d{2})\s*(€|EUR)?$/i);
-    return m ? parseFloat(m[3].replace(",", ".")) : null;
+    const info = extractQuantityInfo(line);
+    return info ? info.unitPrice : null;
 };
 
 const extractTrailingPrice = (line) => {
@@ -446,6 +437,27 @@ const isWeightedDetailLine = (line) => {
         /\d+[.,]\d+\s*KG\s*[Xx]/.test(l) ||
         /€\s*\/\s*KG/.test(l)
     );
+};
+
+const extractQuantityInfo = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+
+    const m = l.match(/(\d+)\s*[Xx*]\s*(\d+[.,]\d{2})\s*(?:€|EUR)?(?:\s+(\d+[.,]\d{2}))?\s*$/i);
+    if (!m) return null;
+
+    return {
+        qty: parseInt(m[1], 10),
+        unitPrice: parseFloat(m[2].replace(",", ".")),
+        totalPrice: m[3] ? parseFloat(m[3].replace(",", ".")) : null
+    };
+};
+
+const stripTrailingQuantitySegment = (line) => {
+    if (!line) return "";
+    return normalizeText(line)
+        .replace(/(\d+)\s*[Xx*]\s*(\d+[.,]\d{2})\s*(?:€|EUR)?(?:\s+(\d+[.,]\d{2}))?\s*$/i, "")
+        .trim();
 };
             
 const parseReceiptLines = (text) => {
@@ -510,27 +522,53 @@ const parseReceiptLines = (text) => {
             continue;
         }
 
-        // Ligne quantité : ex "2 x 1,89 EUR"
-        if (isQuantityLine(currentUpper)) {
-            const qty = extractQuantityFromLine(currentUpper);
-            const unitPrice = extractUnitPriceFromQuantityLine(currentUpper);
+        const qtyInfo = extractQuantityInfo(currentUpper);
 
-            if (qty && lastProductIndex !== null) {
-                // Si on a aussi le prix total du produit précédent, on vérifie
+        // CAS 1 : ligne avec quantité à la fin, parfois fusionnée avec le produit
+        if (qtyInfo) {
+            const beforeQty = stripTrailingQuantitySegment(currentUpper);
+
+            const beforeQtyWithoutTrailingPrice = beforeQty
+                .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
+                .trim();
+
+            const cleanedBeforeQty = cleanArticleName(beforeQtyWithoutTrailingPrice || beforeQty);
+
+            // Exemple Leclerc :
+            // "BAGUETTE NATURE,280G 2 X 0.85€ 1.70"
+            // Exemple Hyper U fusionné :
+            // "POITRINE PORC FUM.PXM 4TR 300G 5,74 € 11 2 X 2,87 EUR"
+            if (
+                cleanedBeforeQty.length >= 3 &&
+                !isSectionHeader(beforeQty) &&
+                !isNoiseLine(beforeQty)
+            ) {
+                lastProductIndex = pushArticle(beforeQty, qtyInfo.qty);
+                pendingName = null;
+                lastProductTotalPrice = extractTrailingPrice(beforeQty);
+                continue;
+            }
+
+            // CAS 2 : vraie ligne quantité seule, juste sous le produit
+            if (lastProductIndex !== null) {
                 if (
-                    unitPrice !== null &&
+                    qtyInfo.unitPrice !== null &&
                     lastProductTotalPrice !== null &&
-                    Math.abs((qty * unitPrice) - lastProductTotalPrice) < 0.03
+                    Math.abs((qtyInfo.qty * qtyInfo.unitPrice) - lastProductTotalPrice) < 0.03
                 ) {
-                    results[lastProductIndex].qte = qty;
-                } else if (unitPrice === null || lastProductTotalPrice === null) {
-                    results[lastProductIndex].qte = qty;
+                    results[lastProductIndex].qte = qtyInfo.qty;
+                } else if (qtyInfo.totalPrice !== null && lastProductTotalPrice !== null) {
+                    if (Math.abs(qtyInfo.totalPrice - lastProductTotalPrice) < 0.03) {
+                        results[lastProductIndex].qte = qtyInfo.qty;
+                    }
+                } else {
+                    results[lastProductIndex].qte = qtyInfo.qty;
                 }
                 continue;
             }
 
-            if (qty && pendingName && !isSectionHeader(pendingName)) {
-                lastProductIndex = pushArticle(pendingName, qty);
+            if (pendingName && !isSectionHeader(pendingName)) {
+                lastProductIndex = pushArticle(pendingName, qtyInfo.qty);
                 pendingName = null;
                 continue;
             }
