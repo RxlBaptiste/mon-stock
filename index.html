@@ -80,6 +80,12 @@
             const [isScanningBarcode, setIsScanningBarcode] = useState(false);
             const isProcessingBarcode = useRef(false);
 
+            const [receiptStats, setReceiptStats] = useState({
+    detectedLines: 0,
+    detectedQty: 0,
+    ticketQty: null
+});
+
             const currentUser = localStorage.getItem('stock_user') || 'baptiste';
 
             useEffect(() => {
@@ -299,6 +305,25 @@ const detectStoreType = (text) => {
     return "generic";
 };
 
+
+const extractTicketArticleCount = (text) => {
+    const lines = (text || "").split("\n").map(l => normalizeText(l).toUpperCase());
+
+    for (const line of lines) {
+        let match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+
+        match = line.match(/NB\s+ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+
+        match = line.match(/ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+    }
+
+    return null;
+};
+
+            
 const parseReceiptLines = (text) => {
     const store = detectStoreType(text);
 
@@ -435,7 +460,11 @@ const parseReceiptLines = (text) => {
     if (!file) return;
 
     setLoading(true);
-    setReceiptItems([]);
+    setReceiptItems({
+    detectedLines: 0,
+    detectedQty: 0,
+    ticketQty: null
+});
 
     let worker = null;
     let objectUrl = null;
@@ -474,7 +503,14 @@ const parseReceiptLines = (text) => {
             }
 
             const items = parseReceiptLines(fullText);
-            setReceiptItems(items);
+const ticketQty = extractTicketArticleCount(fullText);
+
+setReceiptItems(items);
+setReceiptStats({
+    detectedLines: items.length,
+    detectedQty: items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0),
+    ticketQty
+});
         } else {
             objectUrl = URL.createObjectURL(file);
             source = objectUrl;
@@ -486,7 +522,14 @@ const parseReceiptLines = (text) => {
 
             const { data: { text } } = await worker.recognize(source);
             const items = parseReceiptLines(text);
-            setReceiptItems(items);
+const ticketQty = extractTicketArticleCount(text);
+
+setReceiptItems(items);
+setReceiptStats({
+    detectedLines: items.length,
+    detectedQty: items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0),
+    ticketQty
+});
         }
     } catch (err) {
         console.error("Erreur scan ticket :", err);
@@ -561,6 +604,42 @@ const parseReceiptLines = (text) => {
                                     <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg">📷 PHOTO OU PDF</label>
                                     {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
                                 </div>
+                                {(receiptItems.length > 0 || receiptStats.ticketQty !== null) && (
+    <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-2">
+        <h3 className="font-black text-[10px] uppercase text-gray-400 tracking-widest">
+            Vérification du ticket
+        </h3>
+
+        <div className="flex justify-between text-xs">
+            <span className="font-bold text-gray-500">Produits détectés :</span>
+            <span className="font-black text-gray-800">{receiptStats.detectedLines}</span>
+        </div>
+
+        <div className="flex justify-between text-xs">
+            <span className="font-bold text-gray-500">Quantité totale détectée :</span>
+            <span className="font-black text-gray-800">{receiptStats.detectedQty}</span>
+        </div>
+
+        <div className="flex justify-between text-xs">
+            <span className="font-bold text-gray-500">Nombre indiqué sur le ticket :</span>
+            <span className="font-black text-gray-800">
+                {receiptStats.ticketQty !== null ? receiptStats.ticketQty : "Non trouvé"}
+            </span>
+        </div>
+
+        {receiptStats.ticketQty !== null && (
+            <div className={`mt-2 text-[10px] font-black uppercase ${
+                receiptStats.detectedQty === receiptStats.ticketQty
+                    ? 'text-green-600'
+                    : 'text-orange-500'
+            }`}>
+                {receiptStats.detectedQty === receiptStats.ticketQty
+                    ? '✔ Le compte semble bon'
+                    : `⚠ Écart détecté : ${receiptStats.ticketQty - receiptStats.detectedQty}`}
+            </div>
+        )}
+    </div>
+)}
                                 {receiptItems.map((item, idx) => (
                                     <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
                                         <div className="flex justify-between items-center">
