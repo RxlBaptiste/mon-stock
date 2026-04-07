@@ -189,7 +189,6 @@ const cleanArticleName = (str) => {
         .replace(/\bA\b\s+\d+[.,]\d{2}\b/gi, " ")
         .replace(/\b\d+\b/g, " ")
         .replace(/\s{2,}/g, " ")
-        .trim();
 
         .replace(/\b\d+%MG\b/gi, " ")   // enlève 28%MG
         .replace(/\b\d+%/g, " ")        // enlève 40%
