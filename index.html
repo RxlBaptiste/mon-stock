@@ -154,101 +154,350 @@
                 }, 300);
             };
 
+
+
+
+            const normalizeText = (str) => {
+    return (str || "")
+        .replace(/[|]/g, "I")
+        .replace(/[€]/g, "€")
+        .replace(/\s+/g, " ")
+        .trim();
+};
+
+const cleanArticleName = (str) => {
+    if (!str) return "";
+
+    let s = normalizeText(str)
+        .replace(/[*_~#]+/g, " ")
+        .replace(/\b\d+\s*[Xx]\s*\d+[.,]\d{2}\b/g, " ")
+        .replace(/\b\d+[.,]\d{2}\s*(€|EUR)?\b/g, " ")
+        .replace(/\b\d+[.,]\d{3}\s*KG\b/g, " ")
+        .replace(/\bP.U\.?\b/gi, " ")
+        .replace(/\bPRIX\b/gi, " ")
+        .replace(/\bPROMO\b/gi, " ")
+        .replace(/\bREMISE\b/gi, " ")
+        .replace(/\bFID\b/gi, " ")
+        .replace(/\bCARTE\b/gi, " ")
+        .replace(/\bLOT\b/gi, " ")
+        .replace(/\bA\b\s+\d+[.,]\d{2}\b/gi, " ")
+        .replace(/\b\d+\b/g, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+    // On garde lettres, espaces, accents, apostrophes, tirets
+    s = s.replace(/[^A-ZÀ-ÖØ-öø-ÿ'\-\s]/gi, "").trim();
+
+    return s.toUpperCase();
+};
+
+const isPriceLine = (line) => {
+    if (!line) return false;
+    const l = normalizeText(line).toUpperCase();
+
+    return /(\d+[.,]\d{2})\s*(€|EUR)?\s*$/.test(l)
+        || /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(l)
+        || /\bA\s+\d+[.,]\d{2}\b/.test(l);
+};
+
+const extractPrice = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+    const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?\s*$/);
+    return m ? parseFloat(m[1].replace(",", ".")) : null;
+};
+
+const extractQuantityFromMulti = (line) => {
+    if (!line) return null;
+    const l = normalizeText(line).toUpperCase();
+    const m = l.match(/^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})/);
+    return m ? parseInt(m[1], 10) : null;
+};
+
+const isNoiseLine = (line) => {
+    if (!line) return true;
+    const l = normalizeText(line).toUpperCase();
+
+    if (l.length < 2) return true;
+
+    const noisePatterns = [
+        /TOTAL/,
+        /SOUS[\s-]?TOTAL/,
+        /MONTANT/,
+        /A PAYER/,
+        /À PAYER/,
+        /PAYE/,
+        /PAYÉ/,
+        /CARTE BANCAIRE/,
+        /CB/,
+        /VISA/,
+        /MASTERCARD/,
+        /TICKET/,
+        /DUPLICATA/,
+        /CAISS/,
+        /HOTE[S]?SE/,
+        /TVA/,
+        /TEL/,
+        /T[ÉE]L/,
+        /ADRESSE/,
+        /SITE INTERNET/,
+        /WWW/,
+        /MERCI/,
+        /FIDELITE/,
+        /FIDÉLITÉ/,
+        /CARTE U/,
+        /TICKET E\.?LECLERC/,
+        /E\.?LECLERC/,
+        /HYPER U/,
+        /SUPER U/,
+        /U EXPRESS/,
+        /SIRET/,
+        /RCS/,
+        /APE/,
+        /DATE/,
+        /HEURE/,
+        /LE /,
+        /\bN°\b/,
+        /NO CAISSE/,
+        /NO TICKET/,
+        /MAGASIN/,
+        /REMISE/,
+        /ECONOMIE/,
+        /AVOIR/,
+        /BON D['’]ACHAT/,
+        /CAGNOTTE/,
+        /FID/,
+        /EUROS GAGNES/,
+        /ARTICLES/,
+        /NOMBRE D['’]ARTICLES/,
+        /POUR NOUS CONTACTER/
+    ];
+
+    if (noisePatterns.some(rx => rx.test(l))) return true;
+
+    // numéros très techniques / longs
+    if (/^\d{6,}$/.test(l.replace(/\s/g, ""))) return true;
+
+    // lignes presque uniquement numériques/symboles
+    const alphaCount = (l.match(/[A-ZÀ-ÖØ-öø-ÿ]/gi) || []).length;
+    if (alphaCount === 0 && /\d/.test(l)) return true;
+
+    return false;
+};
+
+const detectStoreType = (text) => {
+    const t = (text || "").toUpperCase();
+
+    if (t.includes("HYPER U") || t.includes("SUPER U") || t.includes("U EXPRESS") || t.includes("CARTE U")) {
+        return "hyperu";
+    }
+
+    if (t.includes("E.LECLERC") || t.includes("E LECLERC") || t.includes("TICKET E.LECLERC") || t.includes("LECLERC")) {
+        return "leclerc";
+    }
+
+    return "generic";
+};
+
+const parseReceiptLines = (text) => {
+    const store = detectStoreType(text);
+
+    let lines = text
+        .split("\n")
+        .map(l => normalizeText(l))
+        .filter(Boolean);
+
+    // On enlève les lignes trop parasites au plus tôt
+    lines = lines.filter(l => !isNoiseLine(l));
+
+    const results = [];
+    let pendingName = null;
+
+    const pushArticle = (rawName, qte = 1) => {
+        const nom = cleanArticleName(rawName);
+        if (!nom || nom.length < 3) return;
+
+        // anti faux positifs
+        if (
+            nom.includes("TOTAL") ||
+            nom.includes("MONTANT") ||
+            nom.includes("PAYE") ||
+            nom.includes("TVA") ||
+            nom.includes("CARTE") ||
+            nom.includes("FIDELITE") ||
+            nom.includes("REMISE")
+        ) return;
+
+        const existing = results.find(p => p.nom === nom);
+        if (existing) {
+            existing.qte += qte;
+            return;
+        }
+
+        const cat = detectCategory(nom);
+        results.push({
+            nom,
+            qte,
+            dlc: "",
+            congele: false,
+            zone: cat.zone,
+            rayon: cat.rayon,
+            typeStock: "unite"
+        });
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+        const current = lines[i];
+        const prev = i > 0 ? lines[i - 1] : "";
+        const next = i < lines.length - 1 ? lines[i + 1] : "";
+
+        const currentUpper = current.toUpperCase();
+        const prevUpper = prev.toUpperCase();
+        const nextUpper = next.toUpperCase();
+
+        // Ligne multiplicateur : 2 X 0,85
+        const multiQty = extractQuantityFromMulti(currentUpper);
+        if (multiQty) {
+            if (pendingName) {
+                pushArticle(pendingName, multiQty);
+                pendingName = null;
+            } else if (prev && !isPriceLine(prevUpper) && !isNoiseLine(prevUpper)) {
+                pushArticle(prevUpper, multiQty);
+            }
+            continue;
+        }
+
+        // Ligne avec prix
+        if (isPriceLine(currentUpper)) {
+            let candidate = currentUpper.replace(/(\d+[.,]\d{2})\s*(€|EUR)?\s*$/, "").trim();
+
+            // Si nom + prix sur la même ligne
+            if (cleanArticleName(candidate).length >= 3) {
+                pushArticle(candidate, 1);
+                pendingName = null;
+                continue;
+            }
+
+            // Sinon nom probablement sur la ligne précédente
+            if (pendingName) {
+                pushArticle(pendingName, 1);
+                pendingName = null;
+                continue;
+            }
+
+            if (prev && !isPriceLine(prevUpper) && !isNoiseLine(prevUpper)) {
+                pushArticle(prevUpper, 1);
+                continue;
+            }
+
+            continue;
+        }
+
+        // Ligne article potentielle sans prix
+        if (!isNoiseLine(currentUpper)) {
+            const cleaned = cleanArticleName(currentUpper);
+
+            // Heuristique par magasin
+            if (store === "hyperu") {
+                // Hyper U a souvent des lignes article assez courtes suivies d'un prix
+                if (cleaned.length >= 3) {
+                    if (isPriceLine(nextUpper) || /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(nextUpper)) {
+                        pendingName = currentUpper;
+                    } else {
+                        // on garde en attente, parfois prix arrive 2 lignes après
+                        pendingName = currentUpper;
+                    }
+                }
+            } else if (store === "leclerc") {
+                // Leclerc : souvent nom produit puis ligne prix ou ligne promo
+                if (cleaned.length >= 3) {
+                    pendingName = currentUpper;
+                }
+            } else {
+                if (cleaned.length >= 3) {
+                    pendingName = currentUpper;
+                }
+            }
+        }
+    }
+
+    return results;
+};
+
+
+
+
+
+            
             // --- SCANNER TICKET ---
             const scanTicket = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setLoading(true);
-                setReceiptItems([]);
-                try {
-                    let source = "";
-                    if (file.type === "application/pdf") {
-                        const arrayBuffer = await file.arrayBuffer();
-                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                        const page = await pdf.getPage(1);
-                        const viewport = page.getViewport({ scale: 2.5 });
-                        const canvas = document.createElement("canvas");
-                        const context = canvas.getContext("2d");
-                        canvas.height = viewport.height; canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport: viewport }).promise;
-                        source = canvas.toDataURL("image/png");
-                    } else { source = URL.createObjectURL(file); }
+    const file = e.target.files[0];
+    if (!file) return;
 
-                    const worker = await Tesseract.createWorker("fra");
-                    await worker.setParameters({ preserve_interword_spaces: "1" });
-                    const { data: { text } } = await worker.recognize(source);
-                    
-                    let lignesBrutes = text.split("\n").map(l => l.trim());
-                    let lignesFiltrees = [];
-                    
-                    const isHyperU = text.includes("VENTE") || text.includes("XX") || text.includes("PLANCOET");
+    setLoading(true);
+    setReceiptItems([]);
 
-                    if (isHyperU) {
-                        // Filtre Hyper U : On cherche "VENTE" ou on commence après l'en-tête (TVA)
-                        let debut = lignesBrutes.findIndex(l => l.includes("VENTE") || l.includes("XX"));
-                        if (debut === -1) debut = lignesBrutes.findIndex(l => l.includes("TVA"));
-                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().includes("NOMBRE"));
-                        lignesFiltrees = lignesBrutes.slice(debut + 1, fin !== -1 ? fin : lignesBrutes.length);
-                    } else {
-                        // Filtre Leclerc : On commence après le symbole € et on ignore les numéros de tel
-                        let debut = lignesBrutes.findIndex(l => l.includes("€") && l.length < 5);
-                        let fin = lignesBrutes.findIndex(l => l.toUpperCase().includes("TOTAL"));
-                        lignesFiltrees = lignesBrutes.slice(debut + 1, fin !== -1 ? fin : lignesBrutes.length);
-                    }
+    let worker = null;
+    let objectUrl = null;
 
-                    const res = [];
-                    const regexPrix = /(\d+[\.,]\d{2})\s*(?:€|EUR|E)?$/;
-                    const regexMulti = /^(\d+)\s*[X*x]\s*(\d+[\.,]\d{2})/; // Détecte "2 X 0.85"
+    try {
+        let source = "";
 
-                    lignesFiltrees.forEach((l, index) => {
-                        let ligneUpper = l.toUpperCase();
-                        
-                        // Sécurité : Ignorer les numéros de téléphone ou codes trop longs
-                        if (ligneUpper.length < 3 || (ligneUpper.match(/\./g) || []).length > 2) return;
+        if (file.type === "application/pdf") {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-                        // 1. Gestion Multiplicateur (ex: 2 X 0.85€)
-                        if (regexMulti.test(ligneUpper)) {
-                            const match = ligneUpper.match(regexMulti);
-                            const qte = parseInt(match[1]);
-                            // On cherche l'article juste au dessus qui n'a PAS de prix sur sa propre ligne
-                            for (let j = 1; j <= 2; j++) {
-                                if (res[res.length - j] && !lignesFiltrees[index-j].match(regexPrix)) {
-                                    res[res.length - j].qte = qte;
-                                    break;
-                                }
-                            }
-                            return;
-                        }
+            // On lit les 2 premières pages max, utile si ticket PDF un peu long
+            let fullText = "";
 
-                        // 2. Gestion ligne avec prix
-                        if (regexPrix.test(ligneUpper)) {
-                            let nomPart = l.replace(regexPrix, "").replace(/[*_]/g, "").trim();
-                            
-                            // Si le nom est au dessus (Pesée Hyper U ou Baguette Leclerc)
-                            if (nomPart.length < 3) {
-                                for (let j = 1; j <= 4; j++) {
-                                    let prev = lignesFiltrees[index - j] ? lignesFiltrees[index - j].toUpperCase() : "";
-                                    if (prev.length > 3 && !prev.match(regexPrix) && !prev.includes("PESÉE") && !prev.includes("KG")) {
-                                        nomPart = prev;
-                                        break;
-                                    }
-                                }
-                            }
+            for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 2); pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 2.5 });
+                const canvas = document.createElement("canvas");
+                const context = canvas.getContext("2d");
 
-                            let nomFinal = nomPart.split(',')[0].replace(/\d/g, "").trim();
-                            if (nomFinal.length > 2 && !nomFinal.includes("TOTAL") && !nomFinal.includes("MONTANT")) {
-                                if (!res.some(p => p.nom === nomFinal)) {
-                                    const cat = detectCategory(nomFinal);
-                                    res.push({ nom: nomFinal, qte: 1, dlc: "", congele: false, zone: cat.zone, rayon: cat.rayon, typeStock: "unite" });
-                                }
-                            }
-                        }
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: context, viewport }).promise;
+                const imgData = canvas.toDataURL("image/png");
+
+                if (!worker) {
+                    worker = await Tesseract.createWorker("fra");
+                    await worker.setParameters({
+                        preserve_interword_spaces: "1"
                     });
+                }
 
-                    setReceiptItems(res); 
-                    await worker.terminate();
-                } catch (err) { console.error(err); } finally { setLoading(false); }
-            };
+                const { data: { text } } = await worker.recognize(imgData);
+                fullText += "\n" + text;
+            }
+
+            const items = parseReceiptLines(fullText);
+            setReceiptItems(items);
+        } else {
+            objectUrl = URL.createObjectURL(file);
+            source = objectUrl;
+
+            worker = await Tesseract.createWorker("fra");
+            await worker.setParameters({
+                preserve_interword_spaces: "1"
+            });
+
+            const { data: { text } } = await worker.recognize(source);
+            const items = parseReceiptLines(text);
+            setReceiptItems(items);
+        }
+    } catch (err) {
+        console.error("Erreur scan ticket :", err);
+        alert("Impossible d'analyser ce ticket.");
+    } finally {
+        if (worker) await worker.terminate();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        setLoading(false);
+        e.target.value = "";
+    }
+};
             const updateStock = (id, delta) => {
                 const newP = produits.map(p => {
                     if (p.id !== id) return p;
