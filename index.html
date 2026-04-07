@@ -307,16 +307,27 @@ const detectStoreType = (text) => {
 
 
 const extractTicketArticleCount = (text) => {
-    const lines = (text || "").split("\n").map(l => normalizeText(l).toUpperCase());
+    const lines = (text || "")
+        .split("\n")
+        .map(l => normalizeText(l).toUpperCase());
 
     for (const line of lines) {
-        let match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        let match = null;
+
+        // Cas très fréquent : "TOTAL 4 ARTICLES"
+        match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
         if (match) return parseInt(match[1], 10);
 
+        // Cas : "NOMBRE D'ARTICLES : 4"
+        match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        if (match) return parseInt(match[1], 10);
+
+        // Cas : "NB ARTICLES 4"
         match = line.match(/NB\s+ARTICLES?\s*[:\-]?\s*(\d+)/i);
         if (match) return parseInt(match[1], 10);
 
-        match = line.match(/ARTICLES?\s*[:\-]?\s*(\d+)/i);
+        // Cas : "4 ARTICLES"
+        match = line.match(/\b(\d+)\s+ARTICLES?\b/i);
         if (match) return parseInt(match[1], 10);
     }
 
