@@ -647,6 +647,8 @@ const parseReceiptLines = (text) => {
             return existing;
         }
 
+        const cat = detectCategory(nom);
+        
         const defaultMaturityResult =
     cat.zone === "Alimentaire" && cat.rayon === "Fruits et Légumes"
         ? getEstimatedDateFromProduce(nom, 1)
@@ -1022,50 +1024,55 @@ setReceiptStats({
                                             <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'pourcent'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === 'pourcent' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>%</button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <<select
-    className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-    value={item.rayon}
-    onChange={(e) => {
-        const n = [...receiptItems];
-        n[idx].rayon = e.target.value;
+    <select
+        className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+        value={item.zone}
+        onChange={(e) => {
+            const n = [...receiptItems];
+            n[idx].zone = e.target.value;
+            n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id;
 
-        if (e.target.value !== "Fruits et Légumes") {
-            n[idx].maturite = "";
-            n[idx].dlc = "";
-        } else {
-            const result = getEstimatedDateFromProduce(n[idx].nom, 1);
-            n[idx].maturite = result.maturite;
-            n[idx].dlc = result.date;
-        }
+            if (n[idx].zone === "Alimentaire" && n[idx].rayon === "Fruits et Légumes") {
+                const result = getEstimatedDateFromProduce(n[idx].nom, 1);
+                n[idx].maturite = result.maturite;
+                n[idx].dlc = result.date;
+            } else {
+                n[idx].maturite = "";
+                n[idx].dlc = "";
+            }
 
-        setReceiptItems(n);
-    }}
->
-                                                {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
-                                            </select>
-                                            <select
-    className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-    value={item.zone}
-    onChange={(e) => {
-        const n = [...receiptItems];
-        n[idx].zone = e.target.value;
-        n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id;
+            setReceiptItems(n);
+        }}
+    >
+        {Object.keys(STRUCTURE).map(z => (
+            <option key={z} value={z}>{z}</option>
+        ))}
+    </select>
 
-        if (n[idx].zone === "Alimentaire" && n[idx].rayon === "Fruits et Légumes") {
-            const result = getEstimatedDateFromProduce(n[idx].nom, 1);
-            n[idx].maturite = result.maturite;
-            n[idx].dlc = result.date;
-        } else {
-            n[idx].maturite = "";
-            n[idx].dlc = "";
-        }
+    <select
+        className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+        value={item.rayon}
+        onChange={(e) => {
+            const n = [...receiptItems];
+            n[idx].rayon = e.target.value;
 
-        setReceiptItems(n);
-    }}
->
-                                                {STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
-                                            </select>
-                                        </div>
+            if (e.target.value !== "Fruits et Légumes") {
+                n[idx].maturite = "";
+                n[idx].dlc = "";
+            } else {
+                const result = getEstimatedDateFromProduce(n[idx].nom, 1);
+                n[idx].maturite = result.maturite;
+                n[idx].dlc = result.date;
+            }
+
+            setReceiptItems(n);
+        }}
+    >
+        {STRUCTURE[item.zone].rayons.map(r => (
+            <option key={r.id} value={r.id}>{r.id}</option>
+        ))}
+    </select>
+</div>
                                         {item.zone === "Alimentaire" && item.rayon === "Fruits et Légumes" ? (
     <div className="space-y-2">
         <div className="flex gap-1">
