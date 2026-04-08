@@ -647,16 +647,21 @@ const parseReceiptLines = (text) => {
             return existing;
         }
 
-        const cat = detectCategory(nom);
-        results.push({
-            nom,
-            qte,
-            dlc: "",
-            congele: false,
-            zone: cat.zone,
-            rayon: cat.rayon,
-            typeStock: "unite"
-        });
+        const defaultMaturityResult =
+    cat.zone === "Alimentaire" && cat.rayon === "Fruits et Légumes"
+        ? getEstimatedDateFromProduce(nom, 1)
+        : null;
+
+results.push({
+    nom,
+    qte,
+    dlc: defaultMaturityResult ? defaultMaturityResult.date : "",
+    maturite: defaultMaturityResult ? defaultMaturityResult.maturite : "",
+    congele: false,
+    zone: cat.zone,
+    rayon: cat.rayon,
+    typeStock: "unite"
+});
 
         return results.length - 1;
     };
@@ -1017,17 +1022,129 @@ setReceiptStats({
                                             <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'pourcent'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === 'pourcent' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>%</button>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.zone} onChange={(e) => { const n = [...receiptItems]; n[idx].zone = e.target.value; n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id; setReceiptItems(n); }}>
+                                            <<select
+    className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+    value={item.rayon}
+    onChange={(e) => {
+        const n = [...receiptItems];
+        n[idx].rayon = e.target.value;
+
+        if (e.target.value !== "Fruits et Légumes") {
+            n[idx].maturite = "";
+            n[idx].dlc = "";
+        } else {
+            const result = getEstimatedDateFromProduce(n[idx].nom, 1);
+            n[idx].maturite = result.maturite;
+            n[idx].dlc = result.date;
+        }
+
+        setReceiptItems(n);
+    }}
+>
                                                 {Object.keys(STRUCTURE).map(z => <option key={z} value={z}>{z}</option>)}
                                             </select>
-                                            <select className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.rayon} onChange={(e) => { const n = [...receiptItems]; n[idx].rayon = e.target.value; setReceiptItems(n); }}>
+                                            <select
+    className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+    value={item.zone}
+    onChange={(e) => {
+        const n = [...receiptItems];
+        n[idx].zone = e.target.value;
+        n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id;
+
+        if (n[idx].zone === "Alimentaire" && n[idx].rayon === "Fruits et Légumes") {
+            const result = getEstimatedDateFromProduce(n[idx].nom, 1);
+            n[idx].maturite = result.maturite;
+            n[idx].dlc = result.date;
+        } else {
+            n[idx].maturite = "";
+            n[idx].dlc = "";
+        }
+
+        setReceiptItems(n);
+    }}
+>
                                                 {STRUCTURE[item.zone].rayons.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                                             </select>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <input type="date" className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none" value={item.dlc} onChange={(e) => { const n = [...receiptItems]; n[idx].dlc = e.target.value; setReceiptItems(n); }} />
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].congele = !n[idx].congele; setReceiptItems(n); }} className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 text-white shadow-inner' : 'bg-gray-100'}`}>❄️</button>
-                                        </div>
+                                        {item.zone === "Alimentaire" && item.rayon === "Fruits et Légumes" ? (
+    <div className="space-y-2">
+        <div className="flex gap-1">
+            {["Pas mûr", "Bientôt", "Mûr"].map((label, maturityIdx) => {
+                const trueLabel =
+                    maturityIdx === 0 ? "Pas mûr" :
+                    maturityIdx === 1 ? "Bientôt mûr" :
+                    "Mûr";
+
+                return (
+                    <button
+                        key={label}
+                        type="button"
+                        onClick={() => {
+                            const n = [...receiptItems];
+                            const result = getEstimatedDateFromProduce(n[idx].nom, maturityIdx);
+                            n[idx].maturite = result.maturite;
+                            n[idx].dlc = result.date;
+                            setReceiptItems(n);
+                        }}
+                        className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all border ${
+                            item.maturite === trueLabel
+                                ? 'bg-orange-500 border-orange-600 text-white'
+                                : 'bg-gray-50 border-transparent text-gray-400'
+                        }`}
+                    >
+                        {label}
+                    </button>
+                );
+            })}
+        </div>
+
+        <div className="flex gap-2">
+            <input
+                type="date"
+                className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+                value={item.dlc}
+                onChange={(e) => {
+                    const n = [...receiptItems];
+                    n[idx].dlc = e.target.value;
+                    setReceiptItems(n);
+                }}
+            />
+            <button
+                onClick={() => {
+                    const n = [...receiptItems];
+                    n[idx].congele = !n[idx].congele;
+                    setReceiptItems(n);
+                }}
+                className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 text-white shadow-inner' : 'bg-gray-100'}`}
+            >
+                ❄️
+            </button>
+        </div>
+    </div>
+) : (
+    <div className="flex gap-2">
+        <input
+            type="date"
+            className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+            value={item.dlc}
+            onChange={(e) => {
+                const n = [...receiptItems];
+                n[idx].dlc = e.target.value;
+                setReceiptItems(n);
+            }}
+        />
+        <button
+            onClick={() => {
+                const n = [...receiptItems];
+                n[idx].congele = !n[idx].congele;
+                setReceiptItems(n);
+            }}
+            className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 text-white shadow-inner' : 'bg-gray-100'}`}
+        >
+            ❄️
+        </button>
+    </div>
+)}
                                     </div>
                                 ))}
                                 {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:i.typeStock,stock:i.typeStock==='pourcent'?100:i.qte,date:i.dlc,congele:i.congele?1:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest">Enregistrer au stock 🚀</button>}
