@@ -1452,6 +1452,17 @@ setReceiptStats({
                                                             <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[9px] text-gray-400 italic font-bold uppercase tracking-tighter">{p.date || 'SANS DLC'}</span>
+                                                                {p.maturite && (
+        <span className="text-[8px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-black uppercase">
+            {p.maturite}
+        </span>
+    )}
+
+    {p.note && (
+        <span className="text-[8px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-black uppercase">
+            {p.note}
+        </span>
+    )}
                                                                 {p.congele == 1 && <span className="text-[9px]">❄️</span>}
                                                             </div>
                                                         </div>
@@ -1688,22 +1699,26 @@ setReceiptStats({
                             <button
                                 key={item}
                                 onClick={async () => {
-                                    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
+    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
 
-                                    const n = {
-                                        id: Date.now() + Math.random(),
-                                        nom: item,
-                                        zone: "Alimentaire",
-                                        rayon: "Fruits et Légumes",
-                                        typeStock: "unite",
-                                        stock: 0,
-                                        date: "",
-                                        congele: 0
-                                    };
+    const result = getEstimatedDateFromProduce(item, 1);
 
-                                    setProduits(prev => [n, ...prev]);
-                                    await syncWithServer(n);
-                                }}
+    const n = {
+        id: Date.now() + Math.random(),
+        nom: item,
+        zone: "Alimentaire",
+        rayon: "Fruits et Légumes",
+        typeStock: "unite",
+        stock: 0,
+        date: result.date,
+        maturite: result.maturite,
+        note: "Produit de saison",
+        congele: 0
+    };
+
+    setProduits(prev => [n, ...prev]);
+    await syncWithServer(n);
+}}
                                 className="px-3 py-2 bg-orange-50 text-orange-600 rounded-xl text-[9px] font-black uppercase"
                             >
                                 {item}
@@ -1719,22 +1734,26 @@ setReceiptStats({
                             <button
                                 key={item}
                                 onClick={async () => {
-                                    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
+    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
 
-                                    const n = {
-                                        id: Date.now() + Math.random(),
-                                        nom: item,
-                                        zone: "Alimentaire",
-                                        rayon: "Fruits et Légumes",
-                                        typeStock: "unite",
-                                        stock: 0,
-                                        date: "",
-                                        congele: 0
-                                    };
+    const result = getEstimatedDateFromProduce(item, 1);
 
-                                    setProduits(prev => [n, ...prev]);
-                                    await syncWithServer(n);
-                                }}
+    const n = {
+        id: Date.now() + Math.random(),
+        nom: item,
+        zone: "Alimentaire",
+        rayon: "Fruits et Légumes",
+        typeStock: "unite",
+        stock: 0,
+        date: result.date,
+        maturite: result.maturite,
+        note: "Produit de saison",
+        congele: 0
+    };
+
+    setProduits(prev => [n, ...prev]);
+    await syncWithServer(n);
+}}
                                 className="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-[9px] font-black uppercase"
                             >
                                 {item}
