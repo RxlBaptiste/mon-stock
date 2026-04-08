@@ -89,6 +89,7 @@
             const [loading, setLoading] = useState(false);
             const [showAddModal, setShowAddModal] = useState(false);
             const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
+            const [showSeasonModal, setShowSeasonModal] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
             const [openSections, setOpenSections] = useState({});
             const [form, setForm] = useState({
@@ -270,7 +271,61 @@ const handleMaturity = (nom, etatIndex) => {
         maturite: result.maturite
     });
 };
-            
+            const SEASONAL_PRODUCE = {
+    1: {
+        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CITRON", "CLEMENTINE"],
+        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "POMME DE TERRE", "OIGNON"]
+    },
+    2: {
+        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CITRON"],
+        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "CELERI", "OIGNON"]
+    },
+    3: {
+        fruits: ["POMME", "POIRE", "KIWI", "CITRON"],
+        legumes: ["POIREAU", "CAROTTE", "EPINARD", "CHOU-FLEUR", "RADIS", "ASPERGE"]
+    },
+    4: {
+        fruits: ["POMME", "KIWI", "FRAISE", "CITRON"],
+        legumes: ["ASPERGE", "RADIS", "CAROTTE", "EPINARD", "SALADE", "POIREAU"]
+    },
+    5: {
+        fruits: ["FRAISE", "CERISE", "RHUBARBE"],
+        legumes: ["ASPERGE", "RADIS", "SALADE", "COURGETTE", "CONCOMBRE", "EPINARD"]
+    },
+    6: {
+        fruits: ["FRAISE", "CERISE", "ABRICOT", "FRAMBOISE", "MELON"],
+        legumes: ["COURGETTE", "TOMATE", "CONCOMBRE", "AUBERGINE", "HARICOT VERT", "POIVRON"]
+    },
+    7: {
+        fruits: ["ABRICOT", "PECHE", "NECTARINE", "FRAMBOISE", "MELON", "PASTEQUE"],
+        legumes: ["TOMATE", "COURGETTE", "AUBERGINE", "CONCOMBRE", "POIVRON", "HARICOT VERT"]
+    },
+    8: {
+        fruits: ["PECHE", "NECTARINE", "PRUNE", "FIGUE", "MELON", "RAISIN"],
+        legumes: ["TOMATE", "COURGETTE", "AUBERGINE", "POIVRON", "CONCOMBRE", "HARICOT VERT"]
+    },
+    9: {
+        fruits: ["PRUNE", "FIGUE", "RAISIN", "POIRE", "POMME"],
+        legumes: ["TOMATE", "COURGETTE", "POTIRON", "BROCOLI", "CHAMPIGNON", "POIREAU"]
+    },
+    10: {
+        fruits: ["POMME", "POIRE", "RAISIN", "FIGUE", "KIWI"],
+        legumes: ["POTIRON", "CAROTTE", "POIREAU", "CHOU-FLEUR", "BROCOLI", "CHAMPIGNON"]
+    },
+    11: {
+        fruits: ["POMME", "POIRE", "KIWI", "CLEMENTINE", "ORANGE"],
+        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "CHAMPIGNON", "CELERI"]
+    },
+    12: {
+        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CLEMENTINE", "CITRON"],
+        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "POMME DE TERRE", "OIGNON"]
+    }
+};
+
+const getCurrentMonthSeason = () => {
+    const month = new Date().getMonth() + 1;
+    return SEASONAL_PRODUCE[month] || { fruits: [], legumes: [] };
+};
 
             // --- SCANNER CODE-BARRES ---
             const startBarcode = () => {
@@ -1232,20 +1287,46 @@ setReceiptStats({
 
                         {/* COURSES */}
                         {view === 'shopping' && (
-                            <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
-                                {produits.filter(p => Number(p.stock) === 0).length === 0 ? <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-20 font-black">Liste vide</p> :
-                                    produits.filter(p => Number(p.stock) === 0).map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
-                                            <div className="flex items-center gap-4">
-                                                <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
-                                                <div><p className="font-bold text-sm text-gray-700 uppercase leading-none">{p.nom}</p><p className="text-[8px] font-black uppercase text-gray-300 mt-1">{p.rayon}</p></div>
-                                            </div>
-                                            <button onClick={() => { fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i => i.id !== p.id)); }} className="text-gray-200 p-2 text-lg">✕</button>
-                                        </div>
-                                    ))
-                                }
+    <>
+        <div className="mb-4">
+            <button
+                onClick={() => setShowSeasonModal(true)}
+                className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-black uppercase text-[10px] shadow-sm"
+            >
+                🥕 Voir les fruits et légumes de saison
+            </button>
+        </div>
+
+        <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
+            {produits.filter(p => Number(p.stock) === 0).length === 0 ? (
+                <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-20 font-black">
+                    Liste vide
+                </p>
+            ) : (
+                produits.filter(p => Number(p.stock) === 0).map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
+                        <div className="flex items-center gap-4">
+                            <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
+                            <div>
+                                <p className="font-bold text-sm text-gray-700 uppercase leading-none">{p.nom}</p>
+                                <p className="text-[8px] font-black uppercase text-gray-300 mt-1">{p.rayon}</p>
                             </div>
-                        )}
+                        </div>
+                        <button
+                            onClick={() => {
+                                fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
+                                setProduits(produits.filter(i => i.id !== p.id));
+                            }}
+                            className="text-gray-200 p-2 text-lg"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                ))
+            )}
+        </div>
+    </>
+)}
                     </main>
 
                     {/* MODALE AJOUT MANUEL */}
@@ -1404,6 +1485,87 @@ setReceiptStats({
                             </div>
                         </div>
                     )}
+
+                    {showSeasonModal && (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[80] p-4">
+        <div className="bg-white w-full rounded-[2.5rem] p-6 max-w-sm mx-auto animate-up shadow-2xl">
+            <h2 className="text-center font-black mb-6 uppercase text-gray-400 text-[10px] tracking-widest italic">
+                Produits de saison
+            </h2>
+
+            <div className="space-y-5">
+                <div>
+                    <h3 className="font-black text-[10px] uppercase text-orange-500 mb-2">Fruits</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {getCurrentMonthSeason().fruits.map(item => (
+                            <button
+                                key={item}
+                                onClick={async () => {
+                                    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
+
+                                    const n = {
+                                        id: Date.now() + Math.random(),
+                                        nom: item,
+                                        zone: "Alimentaire",
+                                        rayon: "Fruits et Légumes",
+                                        typeStock: "unite",
+                                        stock: 0,
+                                        date: "",
+                                        congele: 0
+                                    };
+
+                                    setProduits(prev => [n, ...prev]);
+                                    await syncWithServer(n);
+                                }}
+                                className="px-3 py-2 bg-orange-50 text-orange-600 rounded-xl text-[9px] font-black uppercase"
+                            >
+                                {item}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="font-black text-[10px] uppercase text-green-600 mb-2">Légumes</h3>
+                    <div className="flex flex-wrap gap-2">
+                        {getCurrentMonthSeason().legumes.map(item => (
+                            <button
+                                key={item}
+                                onClick={async () => {
+                                    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
+
+                                    const n = {
+                                        id: Date.now() + Math.random(),
+                                        nom: item,
+                                        zone: "Alimentaire",
+                                        rayon: "Fruits et Légumes",
+                                        typeStock: "unite",
+                                        stock: 0,
+                                        date: "",
+                                        congele: 0
+                                    };
+
+                                    setProduits(prev => [n, ...prev]);
+                                    await syncWithServer(n);
+                                }}
+                                className="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-[9px] font-black uppercase"
+                            >
+                                {item}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <button
+                onClick={() => setShowSeasonModal(false)}
+                className="w-full mt-6 bg-black text-white p-4 rounded-2xl font-black uppercase text-[10px]"
+            >
+                Fermer
+            </button>
+        </div>
+    </div>
+)}
 
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
                         <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view==='home'?'text-green-600 scale-125':'text-gray-200'}`}>🏠</button>
