@@ -1,9 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#22c55e">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#22c55e" />
     <title>Mon Stockage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -13,1123 +16,1614 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
-        body { touch-action: manipulation; font-family: sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f3f4f6; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        @keyframes pulse-orange { 0%, 100% { background-color: #fff; } 50% { background-color: #fff7ed; } }
-        .warning-dlc { animation: pulse-orange 2s infinite; border: 2px solid #fb923c !important; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-up { animation: slideUp 0.3s ease-out; }
-        /* Style crucial pour Quagga */
-        #barcode-ui video { width: 100%; height: 100%; object-cover: cover; border-radius: 2rem; }
-        #barcode-ui canvas { display: none; }
+      body {
+        touch-action: manipulation;
+        font-family: sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        background-color: #f3f4f6;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      @keyframes pulse-orange {
+        0%,
+        100% {
+          background-color: #fff;
+        }
+        50% {
+          background-color: #fff7ed;
+        }
+      }
+      .warning-dlc {
+        animation: pulse-orange 2s infinite;
+        border: 2px solid #fb923c !important;
+      }
+      @keyframes slideUp {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .animate-up {
+        animation: slideUp 0.3s ease-out;
+      }
+      /* Style crucial pour Quagga */
+      #barcode-ui video {
+        width: 100%;
+        height: 100%;
+        object-cover: cover;
+        border-radius: 2rem;
+      }
+      #barcode-ui canvas {
+        display: none;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const API_URL = "https://baptisterouxel.fr/stock/api.php";
-        const { useState, useEffect, useMemo, useRef } = React;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+      const API_URL = "https://baptisterouxel.fr/stock/api.php";
+      const { useState, useEffect, useMemo, useRef } = React;
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
-        const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
-        const PASS_SOEUR = "1912";
-        const PASS_PERE = "5678";
+      const PASS_BAPTISTE = "CeciEstMonMotDePasseStock_22";
+      const PASS_SOEUR = "1912";
+      const PASS_PERE = "5678";
 
-        const STRUCTURE = {
-            "Alimentaire": { icon: "🧺", rayons: [
-                { id: "Fruits et Légumes", icon: "🍎" }, { id: "Viande", icon: "🥩" }, { id: "Poisson", icon: "🐟" },
-                { id: "Produits Laitiers", icon: "🥛" }, { id: "Salé", icon: "🧂" }, { id: "Sucré", icon: "🍪" }, 
-                { id: "Condiments", icon: "🍯" }, { id: "Boissons", icon: "🍷" }, { id: "Surgelés", icon: "❄️" }, { id: "Boulangerie", icon: "🥖" }
-            ]},
-            "Hygiène": { icon: "✨", rayons: [
-                { id: "Hygiène Corporelle", icon: "🧼" }, { id: "Hygiène Dentaire", icon: "🪥" }, 
-                { id: "Produits Ménagers", icon: "🧹" }, { id: "Papier", icon: "🧻" }, { id: "Lessive", icon: "🧺" }
-            ]},
-            "Divers": { icon: "📦", rayons: [
-                { id: "Pharmacie", icon: "🩹" }, { id: "Animaux", icon: "🐾" }, { id: "Bricolage", icon: "🛠️" }, { id: "Autres", icon: "🌀" }
-            ]}
+      const STRUCTURE = {
+        Alimentaire: {
+          icon: "🧺",
+          rayons: [
+            { id: "Fruits et Légumes", icon: "🍎" },
+            { id: "Viande", icon: "🥩" },
+            { id: "Poisson", icon: "🐟" },
+            { id: "Produits Laitiers", icon: "🥛" },
+            { id: "Salé", icon: "🧂" },
+            { id: "Sucré", icon: "🍪" },
+            { id: "Condiments", icon: "🍯" },
+            { id: "Boissons", icon: "🍷" },
+            { id: "Surgelés", icon: "❄️" },
+            { id: "Boulangerie", icon: "🥖" },
+          ],
+        },
+        Hygiène: {
+          icon: "✨",
+          rayons: [
+            { id: "Hygiène Corporelle", icon: "🧼" },
+            { id: "Hygiène Dentaire", icon: "🪥" },
+            { id: "Produits Ménagers", icon: "🧹" },
+            { id: "Papier", icon: "🧻" },
+            { id: "Lessive", icon: "🧺" },
+          ],
+        },
+        Divers: {
+          icon: "📦",
+          rayons: [
+            { id: "Pharmacie", icon: "🩹" },
+            { id: "Animaux", icon: "🐾" },
+            { id: "Bricolage", icon: "🛠️" },
+            { id: "Autres", icon: "🌀" },
+          ],
+        },
+      };
+
+      const FRUITS_ET_LEGUMES = [
+        "POMME",
+        "POIRE",
+        "BANANE",
+        "ORANGE",
+        "CITRON",
+        "KIWI",
+        "FRAISE",
+        "FRAMBOISE",
+        "MURE",
+        "MYRTILLE",
+        "CERISE",
+        "RAISIN",
+        "PRUNE",
+        "PECHE",
+        "NECTARINE",
+        "ABRICOT",
+        "ANANAS",
+        "MANGUE",
+        "PAPAYE",
+        "AVOCAT",
+        "GRENADE",
+        "FIGUE",
+        "KAKI",
+        "LITCHI",
+
+        "CAROTTE",
+        "POIREAU",
+        "POMME DE TERRE",
+        "OIGNON",
+        "AIL",
+        "CHOU",
+        "CHOU-FLEUR",
+        "BROCOLI",
+        "ENDIVE",
+        "EPINARD",
+        "CONCOMBRE",
+        "COURGETTE",
+        "AUBERGINE",
+        "POIVRON",
+        "HARICOT",
+        "PETIT POIS",
+        "NAVET",
+        "PANAIS",
+        "BETTERAVE",
+        "CELERI",
+        "FENOUIL",
+        "RADIS",
+        "SALADE",
+        "LAITUE",
+        "MACHE",
+        "ROQUETTE",
+        "COURGE",
+        "POTIRON",
+        "POTIMARRON",
+      ];
+
+      const AUTO_MAPPING = {
+        YAOURT: { zone: "Alimentaire", rayon: "Produits Laitiers" },
+        LAIT: { zone: "Alimentaire", rayon: "Produits Laitiers" },
+        FROMAGE: { zone: "Alimentaire", rayon: "Produits Laitiers" },
+        BEURRE: { zone: "Alimentaire", rayon: "Produits Laitiers" },
+        POMME: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        BANANE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        CAROTTE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        POIREAU: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        TOMATE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        COURGETTE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        CONCOMBRE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        SALADE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        CHAMPIGNON: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        OIGNON: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        "POMME DE TERRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        AVOCAT: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        FRAISE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        FRAMBOISE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        POIRE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        KIWI: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        ORANGE: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        CITRON: { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+        POULET: { zone: "Alimentaire", rayon: "Viande" },
+        JAMBON: { zone: "Alimentaire", rayon: "Viande" },
+        PAIN: { zone: "Alimentaire", rayon: "Boulangerie" },
+        BAGUETTE: { zone: "Alimentaire", rayon: "Boulangerie" },
+        EAU: { zone: "Alimentaire", rayon: "Boissons" },
+        SOPALIN: { zone: "Hygiène", rayon: "Papier" },
+      };
+
+      const App = () => {
+        const [isLoggedIn, setIsLoggedIn] = useState(
+          () => localStorage.getItem("stock_session") === "active",
+        );
+        const [produits, setProduits] = useState([]);
+        const [view, setView] = useState("home");
+        const [loading, setLoading] = useState(false);
+        const [showAddModal, setShowAddModal] = useState(false);
+        const [confirmDelete, setConfirmDelete] = useState({
+          show: false,
+          produit: null,
+        });
+        const [showSeasonModal, setShowSeasonModal] = useState(false);
+        const [searchTerm, setSearchTerm] = useState("");
+        const [openSections, setOpenSections] = useState({});
+        const [form, setForm] = useState({
+          nom: "",
+          zone: "Alimentaire",
+          rayon: "Fruits et Légumes",
+          typeStock: "unite",
+          stock: 1,
+          date: "",
+          maturite: "",
+          directShopping: false,
+          congele: false,
+        });
+        const [receiptItems, setReceiptItems] = useState([]);
+        const [isScanningBarcode, setIsScanningBarcode] = useState(false);
+        const isProcessingBarcode = useRef(false);
+
+        const formatDateFR = (dateStr) => {
+          if (!dateStr) return "SANS DLC";
+
+          const [year, month, day] = dateStr.split("-");
+          return `${day}-${month}-${year}`;
+        };
+        const getDlcStatus = (dateStr) => {
+          if (!dateStr) return "none";
+
+          const today = new Date();
+          const dlc = new Date(dateStr);
+
+          // Reset heure pour comparer proprement
+          today.setHours(0, 0, 0, 0);
+          dlc.setHours(0, 0, 0, 0);
+
+          const diffTime = dlc - today;
+          const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+          if (diffDays < 0) return "expired"; // 🔴 périmé
+          if (diffDays <= 4) return "warning"; // 🟠 proche
+
+          return "ok";
+        };
+        const normalizeText = (str) => {
+          return String(str || "")
+            .replace(/\s+/g, " ")
+            .replace(/[^\S\r\n]+/g, " ")
+            .trim();
         };
 
-        const FRUITS_ET_LEGUMES = [
-    "POMME", "POIRE", "BANANE", "ORANGE", "CITRON", "KIWI",
-    "FRAISE", "FRAMBOISE", "MURE", "MYRTILLE", "CERISE",
-    "RAISIN", "PRUNE", "PECHE", "NECTARINE", "ABRICOT",
-    "ANANAS", "MANGUE", "PAPAYE", "AVOCAT", "GRENADE",
-    "FIGUE", "KAKI", "LITCHI",
+        const [receiptStats, setReceiptStats] = useState({
+          detectedLines: 0,
+          detectedQty: 0,
+          ticketQty: null,
+        });
 
-    "CAROTTE", "POIREAU", "POMME DE TERRE", "OIGNON", "AIL",
-    "CHOU", "CHOU-FLEUR", "BROCOLI", "ENDIVE", "EPINARD",
-    "CONCOMBRE", "COURGETTE", "AUBERGINE", "POIVRON",
-    "HARICOT", "PETIT POIS", "NAVET", "PANAIS",
-    "BETTERAVE", "CELERI", "FENOUIL", "RADIS",
-    "SALADE", "LAITUE", "MACHE", "ROQUETTE",
-    "COURGE", "POTIRON", "POTIMARRON"
-];
-        
-        const AUTO_MAPPING = {
-            "YAOURT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "LAIT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "FROMAGE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "BEURRE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
-            "POMME": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-            "BANANE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-            "CAROTTE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"POIREAU": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"TOMATE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"COURGETTE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"CONCOMBRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"SALADE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"CHAMPIGNON": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"OIGNON": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"POMME DE TERRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"AVOCAT": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"FRAISE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"FRAMBOISE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"POIRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"KIWI": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"ORANGE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-"CITRON": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
-            "POULET": { zone: "Alimentaire", rayon: "Viande" },
-            "JAMBON": { zone: "Alimentaire", rayon: "Viande" },
-            "PAIN": { zone: "Alimentaire", rayon: "Boulangerie" },
-            "BAGUETTE": { zone: "Alimentaire", rayon: "Boulangerie" },
-            "EAU": { zone: "Alimentaire", rayon: "Boissons" },
-            "SOPALIN": { zone: "Hygiène", rayon: "Papier" }
+        const currentUser = localStorage.getItem("stock_user") || "baptiste";
+
+        const expiredCount = produits.filter(
+          (p) => Number(p.stock) > 0 && getDlcStatus(p.date) === "expired",
+        ).length;
+
+        const warningCount = produits.filter(
+          (p) => Number(p.stock) > 0 && getDlcStatus(p.date) === "warning",
+        ).length;
+
+        useEffect(() => {
+          if (isLoggedIn) {
+            fetch(`${API_URL}?action=get_stock&user=${currentUser}`)
+              .then((res) => res.json())
+              .then((data) => setProduits(Array.isArray(data) ? data : []))
+              .catch(() => setProduits([]));
+          }
+        }, [isLoggedIn, currentUser]);
+
+        const syncWithServer = async (p) => {
+          try {
+            await fetch(`${API_URL}?action=save_product&user=${currentUser}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(p),
+            });
+          } catch (err) {
+            console.error(err);
+          }
         };
 
-        const App = () => {
-            const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('stock_session') === 'active');
-            const [produits, setProduits] = useState([]);
-            const [view, setView] = useState('home'); 
-            const [loading, setLoading] = useState(false);
-            const [showAddModal, setShowAddModal] = useState(false);
-            const [confirmDelete, setConfirmDelete] = useState({ show: false, produit: null });
-            const [showSeasonModal, setShowSeasonModal] = useState(false);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [openSections, setOpenSections] = useState({});
-            const [form, setForm] = useState({
-    nom: '',
-    zone: 'Alimentaire',
-    rayon: 'Fruits et Légumes',
-    typeStock: 'unite',
-    stock: 1,
-    date: '',
-    maturite: '',
-    directShopping: false,
-    congele: false
-});
-            const [receiptItems, setReceiptItems] = useState([]);
-            const [isScanningBarcode, setIsScanningBarcode] = useState(false);
-            const isProcessingBarcode = useRef(false);
+        const detectRayon = (nom) => {
+          const upper = nom.toUpperCase();
 
-            const formatDateFR = (dateStr) => {
-    if (!dateStr) return "SANS DLC";
-
-    const [year, month, day] = dateStr.split("-");
-    return `${day}-${month}-${year}`;
-};
-const getDlcStatus = (dateStr) => {
-    if (!dateStr) return "none";
-
-    const today = new Date();
-    const dlc = new Date(dateStr);
-
-    // Reset heure pour comparer proprement
-    today.setHours(0,0,0,0);
-    dlc.setHours(0,0,0,0);
-
-    const diffTime = dlc - today;
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-    if (diffDays < 0) return "expired";     // 🔴 périmé
-    if (diffDays <= 4) return "warning";    // 🟠 proche
-
-    return "ok";
-};
-            const normalizeText = (str) => {
-    return String(str || "")
-        .replace(/\s+/g, " ")
-        .replace(/[^\S\r\n]+/g, " ")
-        .trim();
-};
-
-            const [receiptStats, setReceiptStats] = useState({
-    detectedLines: 0,
-    detectedQty: 0,
-    ticketQty: null
-});
-
-            const currentUser = localStorage.getItem('stock_user') || 'baptiste';
-
-            const expiredCount = produits.filter(
-    p => Number(p.stock) > 0 && getDlcStatus(p.date) === "expired"
-).length;
-
-const warningCount = produits.filter(
-    p => Number(p.stock) > 0 && getDlcStatus(p.date) === "warning"
-).length;
-
-            useEffect(() => {
-                if (isLoggedIn) {
-                    fetch(`${API_URL}?action=get_stock&user=${currentUser}`)
-                        .then(res => res.json())
-                        .then(data => setProduits(Array.isArray(data) ? data : []))
-                        .catch(() => setProduits([]));
-                }
-            }, [isLoggedIn, currentUser]);
-
-            const syncWithServer = async (p) => {
-                try { await fetch(`${API_URL}?action=save_product&user=${currentUser}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }); }
-                catch (err) { console.error(err); }
-            };
-
-            const detectRayon = (nom) => {
-    const upper = nom.toUpperCase();
-
-    if (FRUITS_ET_LEGUMES.some(item => upper.includes(item))) {
-        return {
-            zone: "Alimentaire",
-            rayon: "Fruits et Légumes"
-        };
-    }
-
-    return null;
-};
-            const detectCategory = (nom) => {
-    const n = nom.toUpperCase();
-
-    // 1. Priorité au mapping manuel
-    for (const [k, v] of Object.entries(AUTO_MAPPING)) {
-        if (n.includes(k)) return v;
-    }
-
-    // 2. Détection large fruits et légumes
-    const rayonDetecte = detectRayon(nom);
-    if (rayonDetecte) return rayonDetecte;
-
-    // 3. Détection via durée de vie connue
-    const produceMatch = getProduceBaseLife(nom);
-    if (produceMatch.label) {
-        return { zone: "Alimentaire", rayon: "Fruits et Légumes" };
-    }
-
-    // 4. Produit déjà connu dans ton stock
-    const ex = produits.find(p => p.nom.toUpperCase() === n);
-    return ex
-        ? { zone: ex.zone, rayon: ex.rayon }
-        : { zone: "Alimentaire", rayon: "Autres" };
-};
-
-            const PRODUCE_LIFESPAN = {
-    "FRAISE": 2,
-    "FRAMBOISE": 2,
-    "MURE": 2,
-    "MYRTILLE": 3,
-    "GROSEILLE": 3,
-    "CERISE": 3,
-    "RAISIN": 5,
-    "FIGUE": 3,
-    "ABRICOT": 4,
-    "PRUNE": 5,
-    "PECHE": 5,
-    "NECTARINE": 5,
-    "MELON": 5,
-    "PASTEQUE": 5,
-    "ANANAS": 6,
-    "MANGUE": 6,
-    "PAPAYE": 4,
-    "KIWI": 15,
-    "POIRE": 7,
-    "POMME": 21,
-    "BANANE": 5,
-    "AVOCAT": 4,
-    "ORANGE": 14,
-    "CLEMENTINE": 14,
-    "MANDARINE": 12,
-    "CITRON": 20,
-    "PAMPLEMOUSSE": 14,
-
-    "SALADE": 3,
-    "LAITUE": 3,
-    "MACHE": 3,
-    "ROQUETTE": 3,
-    "EPINARD": 3,
-    "CHAMPIGNON": 3,
-    "ASPERGE": 4,
-    "HARICOT VERT": 5,
-    "PETIT POIS": 4,
-    "BROCOLI": 5,
-    "CHOU-FLEUR": 6,
-    "CHOU FLEUR": 6,
-    "CHOU": 8,
-    "POIREAU": 8,
-    "COURGETTE": 6,
-    "AUBERGINE": 6,
-    "CONCOMBRE": 6,
-    "TOMATE": 7,
-    "POIVRON": 8,
-    "CAROTTE": 20,
-    "NAVET": 12,
-    "RADIS": 7,
-    "BETTERAVE": 14,
-    "CELERI": 10,
-    "FENOUIL": 7,
-    "ENDIVE": 7,
-    "OIGNON": 30,
-    "ECHALOTE": 30,
-    "AIL": 60,
-    "POMME DE TERRE": 30,
-    "PATATE DOUCE": 20,
-    "PANAIS": 14,
-    "TOPINAMBOUR": 10,
-    "ARTICHAUT": 5
-};
-const getProduceBaseLife = (nom) => {
-    const upperName = (nom || "").toUpperCase();
-
-    const sortedKeys = Object.keys(PRODUCE_LIFESPAN).sort((a, b) => b.length - a.length);
-
-    for (const key of sortedKeys) {
-        if (upperName.includes(key)) {
+          if (FRUITS_ET_LEGUMES.some((item) => upper.includes(item))) {
             return {
+              zone: "Alimentaire",
+              rayon: "Fruits et Légumes",
+            };
+          }
+
+          return null;
+        };
+        const detectCategory = (nom) => {
+          const n = nom.toUpperCase();
+
+          // 1. Priorité au mapping manuel
+          for (const [k, v] of Object.entries(AUTO_MAPPING)) {
+            if (n.includes(k)) return v;
+          }
+
+          // 2. Détection large fruits et légumes
+          const rayonDetecte = detectRayon(nom);
+          if (rayonDetecte) return rayonDetecte;
+
+          // 3. Détection via durée de vie connue
+          const produceMatch = getProduceBaseLife(nom);
+          if (produceMatch.label) {
+            return { zone: "Alimentaire", rayon: "Fruits et Légumes" };
+          }
+
+          // 4. Produit déjà connu dans ton stock
+          const ex = produits.find((p) => p.nom.toUpperCase() === n);
+          return ex
+            ? { zone: ex.zone, rayon: ex.rayon }
+            : { zone: "Alimentaire", rayon: "Autres" };
+        };
+
+        const PRODUCE_LIFESPAN = {
+          FRAISE: 2,
+          FRAMBOISE: 2,
+          MURE: 2,
+          MYRTILLE: 3,
+          GROSEILLE: 3,
+          CERISE: 3,
+          RAISIN: 5,
+          FIGUE: 3,
+          ABRICOT: 4,
+          PRUNE: 5,
+          PECHE: 5,
+          NECTARINE: 5,
+          MELON: 5,
+          PASTEQUE: 5,
+          ANANAS: 6,
+          MANGUE: 6,
+          PAPAYE: 4,
+          KIWI: 15,
+          POIRE: 7,
+          POMME: 21,
+          BANANE: 5,
+          AVOCAT: 4,
+          ORANGE: 14,
+          CLEMENTINE: 14,
+          MANDARINE: 12,
+          CITRON: 20,
+          PAMPLEMOUSSE: 14,
+
+          SALADE: 3,
+          LAITUE: 3,
+          MACHE: 3,
+          ROQUETTE: 3,
+          EPINARD: 3,
+          CHAMPIGNON: 3,
+          ASPERGE: 4,
+          "HARICOT VERT": 5,
+          "PETIT POIS": 4,
+          BROCOLI: 5,
+          "CHOU-FLEUR": 6,
+          "CHOU FLEUR": 6,
+          CHOU: 8,
+          POIREAU: 8,
+          COURGETTE: 6,
+          AUBERGINE: 6,
+          CONCOMBRE: 6,
+          TOMATE: 7,
+          POIVRON: 8,
+          CAROTTE: 20,
+          NAVET: 12,
+          RADIS: 7,
+          BETTERAVE: 14,
+          CELERI: 10,
+          FENOUIL: 7,
+          ENDIVE: 7,
+          OIGNON: 30,
+          ECHALOTE: 30,
+          AIL: 60,
+          "POMME DE TERRE": 30,
+          "PATATE DOUCE": 20,
+          PANAIS: 14,
+          TOPINAMBOUR: 10,
+          ARTICHAUT: 5,
+        };
+        const getProduceBaseLife = (nom) => {
+          const upperName = (nom || "").toUpperCase();
+
+          const sortedKeys = Object.keys(PRODUCE_LIFESPAN).sort(
+            (a, b) => b.length - a.length,
+          );
+
+          for (const key of sortedKeys) {
+            if (upperName.includes(key)) {
+              return {
                 label: key,
-                days: PRODUCE_LIFESPAN[key]
-            };
-        }
-    }
+                days: PRODUCE_LIFESPAN[key],
+              };
+            }
+          }
 
-    return {
-        label: null,
-        days: 5
-    };
-};
+          return {
+            label: null,
+            days: 5,
+          };
+        };
 
-const getMaturityConfig = (etatIndex) => {
-    const configs = [
-        { label: "Pas mûr", coeff: 1.5 },
-        { label: "Bientôt mûr", coeff: 1.0 },
-        { label: "Mûr", coeff: 0.5 }
-    ];
+        const getMaturityConfig = (etatIndex) => {
+          const configs = [
+            { label: "Pas mûr", coeff: 1.5 },
+            { label: "Bientôt mûr", coeff: 1.0 },
+            { label: "Mûr", coeff: 0.5 },
+          ];
 
-    return configs[etatIndex] || configs[1];
-};
+          return configs[etatIndex] || configs[1];
+        };
 
-const getEstimatedDateFromProduce = (nom, etatIndex) => {
-    const produce = getProduceBaseLife(nom);
-    const maturity = getMaturityConfig(etatIndex);
+        const getEstimatedDateFromProduce = (nom, etatIndex) => {
+          const produce = getProduceBaseLife(nom);
+          const maturity = getMaturityConfig(etatIndex);
 
-    const d = new Date();
-    d.setDate(d.getDate() + Math.round(produce.days * maturity.coeff));
+          const d = new Date();
+          d.setDate(d.getDate() + Math.round(produce.days * maturity.coeff));
 
-    return {
-        date: d.toISOString().split("T")[0],
-        maturite: maturity.label,
-        matchedProduce: produce.label
-    };
-};
+          return {
+            date: d.toISOString().split("T")[0],
+            maturite: maturity.label,
+            matchedProduce: produce.label,
+          };
+        };
 
-const handleMaturity = (nom, etatIndex) => {
-    const result = getEstimatedDateFromProduce(nom, etatIndex);
+        const handleMaturity = (nom, etatIndex) => {
+          const result = getEstimatedDateFromProduce(nom, etatIndex);
 
-    setForm({
-        ...form,
-        date: result.date,
-        maturite: result.maturite
-    });
-};
-            const SEASONAL_PRODUCE = {
-    1: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
-            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KIWI",
-            "LITCHI", "MANDARINE", "MANGUE", "NOIX DE COCO",
-            "ORANGE", "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
-        ],
-        legumes: [
-            "BETTERAVE", "BROCOLI", "CAROTTE", "CELERI BRANCHE",
-            "CELERI-RAVE", "CHOU", "CHOU-FLEUR", "CHOUX DE BRUXELLES",
-            "COURGE", "ENDIVE", "EPINARD", "FENOUIL", "MACHE",
-            "NAVET", "OIGNON", "PANAIS", "PATATE DOUCE",
-            "POIREAU", "POMME DE TERRE", "RUTABAGA", "SALSIFIS",
-            "TOPINAMBOUR", "TRUFFE"
-        ]
-    },
+          setForm({
+            ...form,
+            date: result.date,
+            maturite: result.maturite,
+          });
+        };
+        const SEASONAL_PRODUCE = {
+          1: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "CLEMENTINE",
+              "DATTE",
+              "FRUIT DE LA PASSION",
+              "GRENADE",
+              "KIWI",
+              "LITCHI",
+              "MANDARINE",
+              "MANGUE",
+              "NOIX DE COCO",
+              "ORANGE",
+              "PAMPLEMOUSSE",
+              "PHYSALIS",
+              "POIRE",
+              "POMME",
+            ],
+            legumes: [
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "COURGE",
+              "ENDIVE",
+              "EPINARD",
+              "FENOUIL",
+              "MACHE",
+              "NAVET",
+              "OIGNON",
+              "PANAIS",
+              "PATATE DOUCE",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RUTABAGA",
+              "SALSIFIS",
+              "TOPINAMBOUR",
+              "TRUFFE",
+            ],
+          },
 
-    2: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
-            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KIWI",
-            "LITCHI", "MANDARINE", "MANGUE", "NOIX DE COCO",
-            "ORANGE", "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
-        ],
-        legumes: [
-            "BETTERAVE", "BROCOLI", "CAROTTE", "CELERI BRANCHE",
-            "CELERI-RAVE", "CHOU", "CHOU-FLEUR", "CHOUX DE BRUXELLES",
-            "COURGE", "ENDIVE", "EPINARD", "FENOUIL", "MACHE",
-            "NAVET", "OIGNON", "PANAIS", "PATATE DOUCE",
-            "POIREAU", "POMME DE TERRE", "RUTABAGA", "SALSIFIS",
-            "TOPINAMBOUR", "TRUFFE"
-        ]
-    },
+          2: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "CLEMENTINE",
+              "DATTE",
+              "FRUIT DE LA PASSION",
+              "GRENADE",
+              "KIWI",
+              "LITCHI",
+              "MANDARINE",
+              "MANGUE",
+              "NOIX DE COCO",
+              "ORANGE",
+              "PAMPLEMOUSSE",
+              "PHYSALIS",
+              "POIRE",
+              "POMME",
+            ],
+            legumes: [
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "COURGE",
+              "ENDIVE",
+              "EPINARD",
+              "FENOUIL",
+              "MACHE",
+              "NAVET",
+              "OIGNON",
+              "PANAIS",
+              "PATATE DOUCE",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RUTABAGA",
+              "SALSIFIS",
+              "TOPINAMBOUR",
+              "TRUFFE",
+            ],
+          },
 
-    3: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "FRAISE",
-            "KIWI", "MANGUE", "NOIX DE COCO", "ORANGE",
-            "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
-        ],
-        legumes: [
-            "ARTICHAUT", "ASPERGE", "BETTERAVE", "BROCOLI",
-            "CAROTTE", "CELERI BRANCHE", "CELERI-RAVE", "CHOU",
-            "CHOU-FLEUR", "EPINARD", "FENOUIL", "MACHE",
-            "NAVET", "OIGNON", "PANAIS", "POIREAU",
-            "POMME DE TERRE", "RADIS", "RUTABAGA",
-            "TOPINAMBOUR"
-        ]
-    },
+          3: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "FRAISE",
+              "KIWI",
+              "MANGUE",
+              "NOIX DE COCO",
+              "ORANGE",
+              "PAMPLEMOUSSE",
+              "PHYSALIS",
+              "POIRE",
+              "POMME",
+            ],
+            legumes: [
+              "ARTICHAUT",
+              "ASPERGE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "EPINARD",
+              "FENOUIL",
+              "MACHE",
+              "NAVET",
+              "OIGNON",
+              "PANAIS",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RADIS",
+              "RUTABAGA",
+              "TOPINAMBOUR",
+            ],
+          },
 
-    4: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "FRAISE",
-            "KIWI", "MANGUE", "NOIX DE COCO", "ORANGE",
-            "PAMPLEMOUSSE", "POMME", "RHUBARBE"
-        ],
-        legumes: [
-            "ARTICHAUT", "ASPERGE", "BETTERAVE", "CAROTTE",
-            "CHOU-FLEUR", "CONCOMBRE", "EPINARD", "FENOUIL",
-            "LAITUE", "MACHE", "NAVET", "OIGNON", "PETIT POIS",
-            "POIREAU", "POMME DE TERRE", "RADIS", "ROQUETTE",
-            "SALADE"
-        ]
-    },
+          4: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "FRAISE",
+              "KIWI",
+              "MANGUE",
+              "NOIX DE COCO",
+              "ORANGE",
+              "PAMPLEMOUSSE",
+              "POMME",
+              "RHUBARBE",
+            ],
+            legumes: [
+              "ARTICHAUT",
+              "ASPERGE",
+              "BETTERAVE",
+              "CAROTTE",
+              "CHOU-FLEUR",
+              "CONCOMBRE",
+              "EPINARD",
+              "FENOUIL",
+              "LAITUE",
+              "MACHE",
+              "NAVET",
+              "OIGNON",
+              "PETIT POIS",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RADIS",
+              "ROQUETTE",
+              "SALADE",
+            ],
+          },
 
-    5: {
-        fruits: [
-            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CERISE",
-            "CITRON", "FRAISE", "FRAMBOISE", "KIWI", "MANGUE",
-            "MELON", "ORANGE", "PAMPLEMOUSSE", "RHUBARBE",
-            "TOMATE"
-        ],
-        legumes: [
-            "ARTICHAUT", "ASPERGE", "AUBERGINE", "BETTERAVE",
-            "BROCOLI", "CAROTTE", "CHOU-FLEUR", "CONCOMBRE",
-            "COURGETTE", "EPINARD", "FENOUIL", "HARICOT VERT",
-            "LAITUE", "NAVET", "OIGNON", "PETIT POIS",
-            "POIVRON", "POMME DE TERRE", "RADIS", "ROQUETTE",
-            "SALADE", "TOMATE"
-        ]
-    },
+          5: {
+            fruits: [
+              "ABRICOT",
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CERISE",
+              "CITRON",
+              "FRAISE",
+              "FRAMBOISE",
+              "KIWI",
+              "MANGUE",
+              "MELON",
+              "ORANGE",
+              "PAMPLEMOUSSE",
+              "RHUBARBE",
+              "TOMATE",
+            ],
+            legumes: [
+              "ARTICHAUT",
+              "ASPERGE",
+              "AUBERGINE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU-FLEUR",
+              "CONCOMBRE",
+              "COURGETTE",
+              "EPINARD",
+              "FENOUIL",
+              "HARICOT VERT",
+              "LAITUE",
+              "NAVET",
+              "OIGNON",
+              "PETIT POIS",
+              "POIVRON",
+              "POMME DE TERRE",
+              "RADIS",
+              "ROQUETTE",
+              "SALADE",
+              "TOMATE",
+            ],
+          },
 
-    6: {
-        fruits: [
-            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CERISE",
-            "CITRON", "FRAISE", "FRAMBOISE", "GROSEILLE",
-            "MELON", "MYRTILLE", "NECTARINE", "PASTEQUE",
-            "PECHE", "PRUNE", "RHUBARBE", "TOMATE"
-        ],
-        legumes: [
-            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
-            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
-            "FENOUIL", "HARICOT VERT", "LAITUE", "OIGNON",
-            "PETIT POIS", "POIVRON", "POMME DE TERRE",
-            "RADIS", "ROQUETTE", "SALADE", "TOMATE"
-        ]
-    },
+          6: {
+            fruits: [
+              "ABRICOT",
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CERISE",
+              "CITRON",
+              "FRAISE",
+              "FRAMBOISE",
+              "GROSEILLE",
+              "MELON",
+              "MYRTILLE",
+              "NECTARINE",
+              "PASTEQUE",
+              "PECHE",
+              "PRUNE",
+              "RHUBARBE",
+              "TOMATE",
+            ],
+            legumes: [
+              "AUBERGINE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU-FLEUR",
+              "CONCOMBRE",
+              "COURGETTE",
+              "EPINARD",
+              "FENOUIL",
+              "HARICOT VERT",
+              "LAITUE",
+              "OIGNON",
+              "PETIT POIS",
+              "POIVRON",
+              "POMME DE TERRE",
+              "RADIS",
+              "ROQUETTE",
+              "SALADE",
+              "TOMATE",
+            ],
+          },
 
-    7: {
-        fruits: [
-            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CASSIS",
-            "CERISE", "FIGUE", "FRAISE", "FRAMBOISE", "GROSEILLE",
-            "MELON", "MIRABELLE", "MURE", "MYRTILLE", "NECTARINE",
-            "PASTEQUE", "PECHE", "PRUNE", "RAISIN", "TOMATE"
-        ],
-        legumes: [
-            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
-            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
-            "FENOUIL", "HARICOT VERT", "LAITUE", "OIGNON",
-            "POIVRON", "POMME DE TERRE", "RADIS", "ROQUETTE",
-            "SALADE", "TOMATE"
-        ]
-    },
+          7: {
+            fruits: [
+              "ABRICOT",
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CASSIS",
+              "CERISE",
+              "FIGUE",
+              "FRAISE",
+              "FRAMBOISE",
+              "GROSEILLE",
+              "MELON",
+              "MIRABELLE",
+              "MURE",
+              "MYRTILLE",
+              "NECTARINE",
+              "PASTEQUE",
+              "PECHE",
+              "PRUNE",
+              "RAISIN",
+              "TOMATE",
+            ],
+            legumes: [
+              "AUBERGINE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU-FLEUR",
+              "CONCOMBRE",
+              "COURGETTE",
+              "EPINARD",
+              "FENOUIL",
+              "HARICOT VERT",
+              "LAITUE",
+              "OIGNON",
+              "POIVRON",
+              "POMME DE TERRE",
+              "RADIS",
+              "ROQUETTE",
+              "SALADE",
+              "TOMATE",
+            ],
+          },
 
-    8: {
-        fruits: [
-            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CASSIS",
-            "FIGUE", "FRAMBOISE", "GROSEILLE", "MELON",
-            "MIRABELLE", "MURE", "MYRTILLE", "NECTARINE",
-            "PASTEQUE", "PECHE", "POIRE", "PRUNE", "RAISIN",
-            "TOMATE"
-        ],
-        legumes: [
-            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
-            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
-            "FENOUIL", "HARICOT VERT", "LAITUE", "MAIS",
-            "OIGNON", "POIVRON", "POMME DE TERRE", "RADIS",
-            "ROQUETTE", "SALADE", "TOMATE"
-        ]
-    },
+          8: {
+            fruits: [
+              "ABRICOT",
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CASSIS",
+              "FIGUE",
+              "FRAMBOISE",
+              "GROSEILLE",
+              "MELON",
+              "MIRABELLE",
+              "MURE",
+              "MYRTILLE",
+              "NECTARINE",
+              "PASTEQUE",
+              "PECHE",
+              "POIRE",
+              "PRUNE",
+              "RAISIN",
+              "TOMATE",
+            ],
+            legumes: [
+              "AUBERGINE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU-FLEUR",
+              "CONCOMBRE",
+              "COURGETTE",
+              "EPINARD",
+              "FENOUIL",
+              "HARICOT VERT",
+              "LAITUE",
+              "MAIS",
+              "OIGNON",
+              "POIVRON",
+              "POMME DE TERRE",
+              "RADIS",
+              "ROQUETTE",
+              "SALADE",
+              "TOMATE",
+            ],
+          },
 
-    9: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CASSIS", "FIGUE",
-            "FRAMBOISE", "GROSEILLE", "MELON", "MIRABELLE",
-            "MURE", "MYRTILLE", "POIRE", "POMME", "PRUNE",
-            "RAISIN", "TOMATE"
-        ],
-        legumes: [
-            "ARTICHAUT", "AUBERGINE", "BETTERAVE", "BROCOLI",
-            "CAROTTE", "CELERI BRANCHE", "CHOU-FLEUR",
-            "CHOUX DE BRUXELLES", "CONCOMBRE", "COURGETTE",
-            "EPINARD", "FENOUIL", "HARICOT VERT", "MAIS",
-            "POIREAU", "POIVRON", "POMME DE TERRE",
-            "POTIMARRON", "POTIRON", "RADIS", "TOMATE",
-            "TRUFFE"
-        ]
-    },
+          9: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CASSIS",
+              "FIGUE",
+              "FRAMBOISE",
+              "GROSEILLE",
+              "MELON",
+              "MIRABELLE",
+              "MURE",
+              "MYRTILLE",
+              "POIRE",
+              "POMME",
+              "PRUNE",
+              "RAISIN",
+              "TOMATE",
+            ],
+            legumes: [
+              "ARTICHAUT",
+              "AUBERGINE",
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CELERI BRANCHE",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "CONCOMBRE",
+              "COURGETTE",
+              "EPINARD",
+              "FENOUIL",
+              "HARICOT VERT",
+              "MAIS",
+              "POIREAU",
+              "POIVRON",
+              "POMME DE TERRE",
+              "POTIMARRON",
+              "POTIRON",
+              "RADIS",
+              "TOMATE",
+              "TRUFFE",
+            ],
+          },
 
-    10: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "COING", "DATTE",
-            "FIGUE", "FRUIT DE LA PASSION", "KAKI", "MANGUE",
-            "MURE", "PAPAYE", "POIRE", "POMME", "PRUNE",
-            "RAISIN"
-        ],
-        legumes: [
-            "BETTERAVE", "BROCOLI", "CAROTTE", "CHOU",
-            "CHOU-FLEUR", "CHOUX DE BRUXELLES", "CONCOMBRE",
-            "COURGE", "COURGETTE", "CELERI BRANCHE",
-            "CELERI-RAVE", "ENDIVE", "EPINARD", "FENOUIL",
-            "NAVET", "PANAIS", "PATATE DOUCE", "POIREAU",
-            "POMME DE TERRE", "RUTABAGA", "TRUFFE"
-        ]
-    },
+          10: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "COING",
+              "DATTE",
+              "FIGUE",
+              "FRUIT DE LA PASSION",
+              "KAKI",
+              "MANGUE",
+              "MURE",
+              "PAPAYE",
+              "POIRE",
+              "POMME",
+              "PRUNE",
+              "RAISIN",
+            ],
+            legumes: [
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "CONCOMBRE",
+              "COURGE",
+              "COURGETTE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "ENDIVE",
+              "EPINARD",
+              "FENOUIL",
+              "NAVET",
+              "PANAIS",
+              "PATATE DOUCE",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RUTABAGA",
+              "TRUFFE",
+            ],
+          },
 
-    11: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
-            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KAKI",
-            "KIWI", "LITCHI", "NOIX DE COCO", "PHYSALIS",
-            "POIRE", "POMME"
-        ],
-        legumes: [
-            "BETTERAVE", "BROCOLI", "CAROTTE", "CHOU",
-            "CHOU-FLEUR", "CHOUX DE BRUXELLES", "COURGE",
-            "CONCOMBRE", "CELERI BRANCHE", "CELERI-RAVE",
-            "ENDIVE", "EPINARD", "FENOUIL", "LENTILLE",
-            "NAVET", "PANAIS", "PATATE DOUCE", "POIREAU",
-            "POMME DE TERRE", "RUTABAGA", "TOPINAMBOUR",
-            "TRUFFE"
-        ]
-    },
+          11: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "CLEMENTINE",
+              "DATTE",
+              "FRUIT DE LA PASSION",
+              "GRENADE",
+              "KAKI",
+              "KIWI",
+              "LITCHI",
+              "NOIX DE COCO",
+              "PHYSALIS",
+              "POIRE",
+              "POMME",
+            ],
+            legumes: [
+              "BETTERAVE",
+              "BROCOLI",
+              "CAROTTE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "COURGE",
+              "CONCOMBRE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "ENDIVE",
+              "EPINARD",
+              "FENOUIL",
+              "LENTILLE",
+              "NAVET",
+              "PANAIS",
+              "PATATE DOUCE",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RUTABAGA",
+              "TOPINAMBOUR",
+              "TRUFFE",
+            ],
+          },
 
-    12: {
-        fruits: [
-            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
-            "DATTE", "FRUIT DE LA PASSION", "GOYAVE", "GRENADE",
-            "KAKI", "KIWI", "LITCHI", "MANGUE", "NOIX DE COCO",
-            "ORANGE", "PAPAYE", "PHYSALIS", "POMME"
-        ],
-        legumes: [
-            "BETTERAVE", "CAROTTE", "CHOU", "CHOU-FLEUR",
-            "CHOUX DE BRUXELLES", "COURGE", "CELERI BRANCHE",
-            "CELERI-RAVE", "ENDIVE", "EPINARD", "FENOUIL",
-            "LENTILLE", "NAVET", "PANAIS", "PATATE DOUCE",
-            "POIREAU", "POMME DE TERRE", "RUTABAGA",
-            "TOPINAMBOUR", "TRUFFE"
-        ]
-    }
-};
+          12: {
+            fruits: [
+              "ANANAS",
+              "AVOCAT",
+              "BANANE",
+              "CITRON",
+              "CLEMENTINE",
+              "DATTE",
+              "FRUIT DE LA PASSION",
+              "GOYAVE",
+              "GRENADE",
+              "KAKI",
+              "KIWI",
+              "LITCHI",
+              "MANGUE",
+              "NOIX DE COCO",
+              "ORANGE",
+              "PAPAYE",
+              "PHYSALIS",
+              "POMME",
+            ],
+            legumes: [
+              "BETTERAVE",
+              "CAROTTE",
+              "CHOU",
+              "CHOU-FLEUR",
+              "CHOUX DE BRUXELLES",
+              "COURGE",
+              "CELERI BRANCHE",
+              "CELERI-RAVE",
+              "ENDIVE",
+              "EPINARD",
+              "FENOUIL",
+              "LENTILLE",
+              "NAVET",
+              "PANAIS",
+              "PATATE DOUCE",
+              "POIREAU",
+              "POMME DE TERRE",
+              "RUTABAGA",
+              "TOPINAMBOUR",
+              "TRUFFE",
+            ],
+          },
+        };
 
-const getCurrentMonthSeason = () => {
-    const month = new Date().getMonth() + 1;
-    return SEASONAL_PRODUCE[month] || { fruits: [], legumes: [] };
-};
+        const getCurrentMonthSeason = () => {
+          const month = new Date().getMonth() + 1;
+          return SEASONAL_PRODUCE[month] || { fruits: [], legumes: [] };
+        };
 
-            // --- SCANNER CODE-BARRES ---
-            const startBarcode = () => {
-                setIsScanningBarcode(true);
+        // --- SCANNER CODE-BARRES ---
+        const startBarcode = () => {
+          setIsScanningBarcode(true);
+          isProcessingBarcode.current = false;
+          setTimeout(() => {
+            Quagga.init(
+              {
+                inputStream: {
+                  name: "Live",
+                  type: "LiveStream",
+                  target: document.querySelector("#barcode-ui"),
+                  constraints: {
+                    facingMode: "environment",
+                    width: 640,
+                    height: 480,
+                  },
+                },
+                decoder: { readers: ["ean_reader", "ean_8_reader"] },
+                locate: true,
+              },
+              (err) => {
+                if (err) {
+                  alert("Erreur Caméra");
+                  setIsScanningBarcode(false);
+                  return;
+                }
+                Quagga.start();
+              },
+            );
+
+            Quagga.onDetected(async (data) => {
+              if (isProcessingBarcode.current) return;
+              const code = data.codeResult.code;
+              if (!code) return;
+
+              isProcessingBarcode.current = true;
+              Quagga.pause();
+
+              try {
+                const res = await fetch(
+                  `https://world.openfoodfacts.org/api/v0/product/${code}.json`,
+                );
+                const json = await res.json();
+                if (json.status === 1) {
+                  const p = json.product;
+                  const nom =
+                    p.product_name_fr || p.product_name || "Produit inconnu";
+                  const cat = detectCategory(nom);
+                  setForm({
+                    ...form,
+                    nom: nom.toUpperCase(),
+                    zone: cat.zone,
+                    rayon: cat.rayon,
+                    typeStock: "unite",
+                    stock: 1,
+                  });
+                  setShowAddModal(true);
+                  Quagga.stop();
+                  setIsScanningBarcode(false);
+                } else {
+                  alert("Produit non trouvé");
+                  Quagga.start();
+                  isProcessingBarcode.current = false;
+                }
+              } catch (e) {
+                Quagga.start();
                 isProcessingBarcode.current = false;
-                setTimeout(() => {
-                    Quagga.init({
-                        inputStream: { 
-                            name: "Live", 
-                            type: "LiveStream", 
-                            target: document.querySelector('#barcode-ui'),
-                            constraints: { facingMode: "environment", width: 640, height: 480 } 
-                        },
-                        decoder: { readers: ["ean_reader", "ean_8_reader"] },
-                        locate: true
-                    }, (err) => {
-                        if (err) { alert("Erreur Caméra"); setIsScanningBarcode(false); return; }
-                        Quagga.start();
-                    });
-
-                    Quagga.onDetected(async (data) => {
-                        if (isProcessingBarcode.current) return;
-                        const code = data.codeResult.code;
-                        if (!code) return;
-                        
-                        isProcessingBarcode.current = true;
-                        Quagga.pause();
-
-                        try {
-                            const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                            const json = await res.json();
-                            if (json.status === 1) {
-                                const p = json.product;
-                                const nom = p.product_name_fr || p.product_name || "Produit inconnu";
-                                const cat = detectCategory(nom);
-                                setForm({ ...form, nom: nom.toUpperCase(), zone: cat.zone, rayon: cat.rayon, typeStock: 'unite', stock: 1 });
-                                setShowAddModal(true);
-                                Quagga.stop();
-                                setIsScanningBarcode(false);
-                            } else {
-                                alert("Produit non trouvé");
-                                Quagga.start();
-                                isProcessingBarcode.current = false;
-                            }
-                        } catch (e) {
-                            Quagga.start();
-                            isProcessingBarcode.current = false;
-                        }
-                    });
-                }, 300);
-            };
-
-
-
-
-            const normalizeOCRPrice = (raw) => {
-    if (!raw) return null;
-
-    let s = String(raw)
-        .toUpperCase()
-        .replace(/[O]/g, "0")
-        .replace(/[IIL]/g, "1")
-        .replace(/\//g, "7")
-        .replace(/\s+/g, "")
-        .trim();
-
-    if (/^\d+[.,]\d{2}$/.test(s)) {
-        return parseFloat(s.replace(",", "."));
-    }
-
-    if (/^\d{3}$/.test(s)) {
-        return parseFloat(s.slice(0, 1) + "." + s.slice(1));
-    }
-
-    if (/^\d{4}$/.test(s)) {
-        return parseFloat(s.slice(0, 2) + "." + s.slice(2));
-    }
-
-    return null;
-};
-
-const cleanArticleName = (str) => {
-    if (!str) return "";
-
-    let s = normalizeText(str)
-        .replace(/[*_~#]+/g, " ")
-        .replace(/\b\d+\s*[Xx]\s*\d+[.,]\d{2}\b/g, " ")
-        .replace(/\b\d+[.,]\d{2}\s*(€|EUR)?\b/g, " ")
-        .replace(/\b\d+[.,]\d{3}\s*KG\b/gi, " ")
-        .replace(/\b\d+%MG\b/gi, " ")
-        .replace(/\b\d+%\b/g, " ")
-        .replace(/\b\d+[Kk][Gg]\b/g, " ")
-        .replace(/\b\d+[Gg]\b/g, " ")
-        .replace(/\bP.U\.?\b/gi, " ")
-        .replace(/\bPRIX\b/gi, " ")
-        .replace(/\bPROMO\b/gi, " ")
-        .replace(/\bREMISE\b/gi, " ")
-        .replace(/\bFID\b/gi, " ")
-        .replace(/\bCARTE\b/gi, " ")
-        .replace(/\bLOT\b/gi, " ")
-        .replace(/\bA\b\s+\d+[.,]\d{2}\b/gi, " ")
-        .replace(/\b\d+\b/g, " ")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-
-    s = s.replace(/[^A-ZÀ-ÖØ-öø-ÿ'\-\s]/gi, "").trim();
-
-    return s.toUpperCase();
-};
-const isPriceLine = (line) => {
-    if (!line) return false;
-    const l = normalizeText(line).toUpperCase();
-
-    return /(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/.test(l)
-        || /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(l)
-        || /\bA\s+\d+[.,]\d{2}\b/.test(l)
-        || /\d+[.,]\d{2}\s*€\s*\d{1,2}\s*$/.test(l);
-};
-
-const extractPrice = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-    const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?\s*$/);
-    return m ? parseFloat(m[1].replace(",", ".")) : null;
-};
-
-const extractQuantityFromMulti = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-    const m = l.match(/^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})/);
-    return m ? parseInt(m[1], 10) : null;
-};
-
-const isNoiseLine = (line) => {
-    if (!line) return true;
-    const l = normalizeText(line).toUpperCase();
-
-    if (l.length < 2) return true;
-
-    const noisePatterns = [
-        /TOTAL/,
-        /SOUS[\s-]?TOTAL/,
-        /MONTANT/,
-        /A PAYER/,
-        /À PAYER/,
-        /PAYE/,
-        /PAYÉ/,
-        /CARTE BANCAIRE/,
-        /CB/,
-        /VISA/,
-        /MASTERCARD/,
-        /TICKET/,
-        /DUPLICATA/,
-        /CAISS/,
-        /HOTE[S]?SE/,
-        /TVA/,
-    /\bTEL\b/,
-    /\bT[ÉE]L\b/,
-    /ADRESSE/,
-        /SITE INTERNET/,
-        /WWW/,
-        /MERCI/,
-        /FIDELITE/,
-        /FIDÉLITÉ/,
-        /CARTE U/,
-        /TICKET E\.?LECLERC/,
-        /E\.?LECLERC/,
-        /HYPER U/,
-        /SUPER U/,
-        /U EXPRESS/,
-        /SIRET/,
-        /RCS/,
-        /APE/,
-        /DATE/,
-        /HEURE/,
-        /\bN°\b/,
-        /NO CAISSE/,
-        /NO TICKET/,
-        /MAGASIN/,
-        /REMISE/,
-        /ECONOMIE/,
-        /AVOIR/,
-        /BON D['’]ACHAT/,
-        /CAGNOTTE/,
-        /FID/,
-        /EUROS GAGNES/,
-        /ARTICLES/,
-        /NOMBRE D['’]ARTICLES/,
-        /POUR NOUS CONTACTER/,
-        /PESEE MANUELLE/,
- /PESÉE MANUELLE/,
- /KG\s*X/,
- /€\/KG/,
-        /PESEE MANUELLE/,
- /PESÉE MANUELLE/,
- /BON D['’]ACHAT/,
- /NO\s+[X*]+/
-    ];
-
-    if (noisePatterns.some(rx => rx.test(l))) return true;
-
-    // numéros très techniques / longs
-    if (/^\d{6,}$/.test(l.replace(/\s/g, ""))) return true;
-
-    // lignes presque uniquement numériques/symboles
-    const alphaCount = (l.match(/[A-ZÀ-ÖØ-öø-ÿ]/gi) || []).length;
-    if (alphaCount === 0 && /\d/.test(l)) return true;
-
-    return false;
-};
-
-const detectStoreType = (text) => {
-    const t = (text || "").toUpperCase();
-
-    if (t.includes("HYPER U") || t.includes("SUPER U") || t.includes("U EXPRESS") || t.includes("CARTE U")) {
-        return "hyperu";
-    }
-
-    if (t.includes("E.LECLERC") || t.includes("E LECLERC") || t.includes("TICKET E.LECLERC") || t.includes("LECLERC")) {
-        return "leclerc";
-    }
-
-    return "generic";
-};
-
-
-const extractTicketArticleCount = (text) => {
-    const lines = (text || "")
-        .split("\n")
-        .map(l => normalizeText(l).toUpperCase());
-
-    for (const line of lines) {
-        let match = null;
-
-        // PRIORITÉ 1 : Hyper U -> TOTAL [31] Articles
-        match = line.match(/TOTAL\s*\[(\d+)\]\s*ARTICLES?/i);
-        if (match) return parseInt(match[1], 10);
-
-        // PRIORITÉ 2 : Leclerc -> TOTAL 4 ARTICLES
-        match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
-        if (match) return parseInt(match[1], 10);
-    }
-
-    // Si rien trouvé, on cherche les formats secondaires
-    for (const line of lines) {
-        let match = null;
-
-        match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
-        if (match) return parseInt(match[1], 10);
-
-        match = line.match(/NB\s+ARTICLES?\s*[:\-]?\s*(\d+)/i);
-        if (match) return parseInt(match[1], 10);
-
-        match = line.match(/\b(\d+)\s+ARTICLES?\b/i);
-        if (match) return parseInt(match[1], 10);
-
-        // En dernier seulement : nombre de lignes
-        match = line.match(/NOMBRE\s+DE\s+LIGNES?\s+D['’]ARTICLE\s+(\d+)/i);
-        if (match) return parseInt(match[1], 10);
-    }
-
-    return null;
-};
-
-
-    const isSectionHeader = (line) => {
-    if (!line) return false;
-
-    const l = normalizeText(line).toUpperCase().trim();
-
-    const knownHeaders = [
-        "FRUITS",
-        "LEGUMES",
-        "PANIFICATION",
-        "PATES",
-        "PLATS CUISINES",
-        "PETITE PARAPHARMACIE",
-        "JUS ET NECTARS",
-        "FROMAGE COUPE EMBALLE",
-        "CONSERVES DE LEGUMES",
-        "ULTRA FRAIS",
-        "VOLAILLES STANDARD",
-        "TRAITEUR LS UVCI",
-        "REDUCTIONS IMMEDIATES",
-        "BON DE REDUCTION"
-    ];
-
-    return knownHeaders.includes(l);
-};
-
-            const truncateReceiptForItems = (text) => {
-    const lines = (text || "")
-        .split("\n")
-        .map(l => normalizeText(l))
-        .filter(Boolean);
-
-    const stopPatterns = [
-        /^TOTAL\s*\[?\s*\d+\s*\]?\s*ARTICLES?/i,
-        /^TOTAL\s+\d+\s+ARTICLES?/i,
-        /^SOUS[\s-]?TOTAL/i,
-        /^TOTAL\s+TVA/i,
-        /^CB\b/i,
-        /CARTE\s+BANCAIRE/i,
-        /CREDIT\s+AGRICOLE/i,
-        /MERCI\s+DE\s+VOTRE\s+VISITE/i
-    ];
-
-    const stopIndex = lines.findIndex(line => stopPatterns.some(rx => rx.test(line)));
-
-    if (stopIndex === -1) return lines.join("\n");
-
-    return lines.slice(0, stopIndex).join("\n");
-};
-
-const isQuantityLine = (line) => {
-    return extractQuantityInfo(line) !== null;
-};
-
-const extractQuantityFromLine = (line) => {
-    const info = extractQuantityInfo(line);
-    return info ? info.qty : null;
-};
-
-const extractUnitPriceFromQuantityLine = (line) => {
-    const info = extractQuantityInfo(line);
-    return info ? info.unitPrice : null;
-};
-
-const extractTrailingPrice = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-
-    const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/);
-    return m ? parseFloat(m[1].replace(",", ".")) : null;
-};
-            
-const isWeightedDetailLine = (line) => {
-    if (!line) return false;
-    const l = normalizeText(line).toUpperCase();
-
-    return (
-        /PESEE MANUELLE/.test(l) ||
-        /PESÉE MANUELLE/.test(l) ||
-        /\d+[.,]\d+\s*KG\s*[Xx]\s*\d+[.,]\d+\s*€?\s*\/?\s*KG/.test(l) ||
-        /\d+[.,]\d+\s*KG\s*[Xx]/.test(l) ||
-        /€\s*\/\s*KG/.test(l)
-    );
-};
-
-const extractQuantityInfo = (line) => {
-    if (!line) return null;
-    const l = normalizeText(line).toUpperCase();
-
-    const m = l.match(/(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i);
-    if (!m) return null;
-
-    return {
-        qty: parseInt(m[1], 10),
-        unitPrice: parseFloat(m[2].replace(",", ".")),
-        totalPrice: m[3] ? parseFloat(m[3].replace(",", ".")) : null
-    };
-};
-
-const stripTrailingQuantitySegment = (line) => {
-    if (!line) return "";
-    return normalizeText(line)
-        .replace(/(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i, "")
-        .trim();
-};
-            
-const parseReceiptLines = (text) => {
-    let lines = text
-        .split("\n")
-        .map(l => normalizeText(l))
-        .filter(Boolean);
-
-    const results = [];
-    let pendingName = null;
-    let lastProductIndex = null;
-    let lastProductTotalPrice = null;
-
-    const pushArticle = (rawName, qte = 1) => {
-        const nom = cleanArticleName(rawName);
-        if (!nom || nom.length < 3) return null;
-
-        if (
-            nom.includes("TOTAL") ||
-            nom.includes("MONTANT") ||
-            nom.includes("PAYE") ||
-            nom.includes("TVA") ||
-            nom.includes("CARTE") ||
-            nom.includes("FIDELITE") ||
-            nom.includes("REMISE") ||
-            nom.includes("REDUCTION") ||
-            nom.includes("BON DE REDUCTION")
-        ) return null;
-
-        const existing = results.findIndex(p => p.nom === nom);
-        if (existing !== -1) {
-            results[existing].qte += qte;
-            return existing;
-        }
-
-        const cat = detectCategory(nom);
-        
-        const defaultMaturityResult =
-    cat.zone === "Alimentaire" && cat.rayon === "Fruits et Légumes"
-        ? getEstimatedDateFromProduce(nom, 1)
-        : null;
-
-results.push({
-    nom,
-    qte,
-    dlc: defaultMaturityResult ? defaultMaturityResult.date : "",
-    maturite: defaultMaturityResult ? defaultMaturityResult.maturite : "",
-    congele: false,
-    zone: cat.zone,
-    rayon: cat.rayon,
-    typeStock: "unite"
-});
-
-        return results.length - 1;
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-        const current = lines[i];
-        const currentUpper = current.toUpperCase();
-        console.log("LINE:", currentUpper);
-
-        if (isNoiseLine(currentUpper) || isWeightedDetailLine(currentUpper)) {
-            continue;
-        }
-
-        if (isSectionHeader(currentUpper)) {
-            pendingName = null;
-            lastProductIndex = null;
-            lastProductTotalPrice = null;
-            continue;
-        }
-
-        const qtyInfo = extractQuantityInfo(currentUpper);
-        if (qtyInfo) {
-    console.log("QTY LINE DETECTED:", {
-        line: currentUpper,
-        qtyInfo,
-        pendingName,
-        lastProductIndex,
-        lastProductTotalPrice
-    });
-}
-
-        // CAS 1 : ligne avec quantité à la fin, parfois fusionnée avec le produit
-        if (qtyInfo) {
-            const beforeQty = stripTrailingQuantitySegment(currentUpper);
-
-            const beforeQtyWithoutTrailingPrice = beforeQty
+              }
+            });
+          }, 300);
+        };
+
+        const normalizeOCRPrice = (raw) => {
+          if (!raw) return null;
+
+          let s = String(raw)
+            .toUpperCase()
+            .replace(/[O]/g, "0")
+            .replace(/[IIL]/g, "1")
+            .replace(/\//g, "7")
+            .replace(/\s+/g, "")
+            .trim();
+
+          if (/^\d+[.,]\d{2}$/.test(s)) {
+            return parseFloat(s.replace(",", "."));
+          }
+
+          if (/^\d{3}$/.test(s)) {
+            return parseFloat(s.slice(0, 1) + "." + s.slice(1));
+          }
+
+          if (/^\d{4}$/.test(s)) {
+            return parseFloat(s.slice(0, 2) + "." + s.slice(2));
+          }
+
+          return null;
+        };
+
+        const cleanArticleName = (str) => {
+          if (!str) return "";
+
+          let s = normalizeText(str)
+            .replace(/[*_~#]+/g, " ")
+            .replace(/\b\d+\s*[Xx]\s*\d+[.,]\d{2}\b/g, " ")
+            .replace(/\b\d+[.,]\d{2}\s*(€|EUR)?\b/g, " ")
+            .replace(/\b\d+[.,]\d{3}\s*KG\b/gi, " ")
+            .replace(/\b\d+%MG\b/gi, " ")
+            .replace(/\b\d+%\b/g, " ")
+            .replace(/\b\d+[Kk][Gg]\b/g, " ")
+            .replace(/\b\d+[Gg]\b/g, " ")
+            .replace(/\bP.U\.?\b/gi, " ")
+            .replace(/\bPRIX\b/gi, " ")
+            .replace(/\bPROMO\b/gi, " ")
+            .replace(/\bREMISE\b/gi, " ")
+            .replace(/\bFID\b/gi, " ")
+            .replace(/\bCARTE\b/gi, " ")
+            .replace(/\bLOT\b/gi, " ")
+            .replace(/\bA\b\s+\d+[.,]\d{2}\b/gi, " ")
+            .replace(/\b\d+\b/g, " ")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+
+          s = s.replace(/[^A-ZÀ-ÖØ-öø-ÿ'\-\s]/gi, "").trim();
+
+          return s.toUpperCase();
+        };
+        const isPriceLine = (line) => {
+          if (!line) return false;
+          const l = normalizeText(line).toUpperCase();
+
+          return (
+            /(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/.test(l) ||
+            /^\d+\s*[Xx]\s*\d+[.,]\d{2}/.test(l) ||
+            /\bA\s+\d+[.,]\d{2}\b/.test(l) ||
+            /\d+[.,]\d{2}\s*€\s*\d{1,2}\s*$/.test(l)
+          );
+        };
+
+        const extractPrice = (line) => {
+          if (!line) return null;
+          const l = normalizeText(line).toUpperCase();
+          const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?\s*$/);
+          return m ? parseFloat(m[1].replace(",", ".")) : null;
+        };
+
+        const extractQuantityFromMulti = (line) => {
+          if (!line) return null;
+          const l = normalizeText(line).toUpperCase();
+          const m = l.match(/^(\d+)\s*[Xx]\s*(\d+[.,]\d{2})/);
+          return m ? parseInt(m[1], 10) : null;
+        };
+
+        const isNoiseLine = (line) => {
+          if (!line) return true;
+          const l = normalizeText(line).toUpperCase();
+
+          if (l.length < 2) return true;
+
+          const noisePatterns = [
+            /TOTAL/,
+            /SOUS[\s-]?TOTAL/,
+            /MONTANT/,
+            /A PAYER/,
+            /À PAYER/,
+            /PAYE/,
+            /PAYÉ/,
+            /CARTE BANCAIRE/,
+            /CB/,
+            /VISA/,
+            /MASTERCARD/,
+            /TICKET/,
+            /DUPLICATA/,
+            /CAISS/,
+            /HOTE[S]?SE/,
+            /TVA/,
+            /\bTEL\b/,
+            /\bT[ÉE]L\b/,
+            /ADRESSE/,
+            /SITE INTERNET/,
+            /WWW/,
+            /MERCI/,
+            /FIDELITE/,
+            /FIDÉLITÉ/,
+            /CARTE U/,
+            /TICKET E\.?LECLERC/,
+            /E\.?LECLERC/,
+            /HYPER U/,
+            /SUPER U/,
+            /U EXPRESS/,
+            /SIRET/,
+            /RCS/,
+            /APE/,
+            /DATE/,
+            /HEURE/,
+            /\bN°\b/,
+            /NO CAISSE/,
+            /NO TICKET/,
+            /MAGASIN/,
+            /REMISE/,
+            /ECONOMIE/,
+            /AVOIR/,
+            /BON D['’]ACHAT/,
+            /CAGNOTTE/,
+            /FID/,
+            /EUROS GAGNES/,
+            /ARTICLES/,
+            /NOMBRE D['’]ARTICLES/,
+            /POUR NOUS CONTACTER/,
+            /PESEE MANUELLE/,
+            /PESÉE MANUELLE/,
+            /KG\s*X/,
+            /€\/KG/,
+            /PESEE MANUELLE/,
+            /PESÉE MANUELLE/,
+            /BON D['’]ACHAT/,
+            /NO\s+[X*]+/,
+          ];
+
+          if (noisePatterns.some((rx) => rx.test(l))) return true;
+
+          // numéros très techniques / longs
+          if (/^\d{6,}$/.test(l.replace(/\s/g, ""))) return true;
+
+          // lignes presque uniquement numériques/symboles
+          const alphaCount = (l.match(/[A-ZÀ-ÖØ-öø-ÿ]/gi) || []).length;
+          if (alphaCount === 0 && /\d/.test(l)) return true;
+
+          return false;
+        };
+
+        const detectStoreType = (text) => {
+          const t = (text || "").toUpperCase();
+
+          if (
+            t.includes("HYPER U") ||
+            t.includes("SUPER U") ||
+            t.includes("U EXPRESS") ||
+            t.includes("CARTE U")
+          ) {
+            return "hyperu";
+          }
+
+          if (
+            t.includes("E.LECLERC") ||
+            t.includes("E LECLERC") ||
+            t.includes("TICKET E.LECLERC") ||
+            t.includes("LECLERC")
+          ) {
+            return "leclerc";
+          }
+
+          return "generic";
+        };
+
+        const extractTicketArticleCount = (text) => {
+          const lines = (text || "")
+            .split("\n")
+            .map((l) => normalizeText(l).toUpperCase());
+
+          for (const line of lines) {
+            let match = null;
+
+            // PRIORITÉ 1 : Hyper U -> TOTAL [31] Articles
+            match = line.match(/TOTAL\s*\[(\d+)\]\s*ARTICLES?/i);
+            if (match) return parseInt(match[1], 10);
+
+            // PRIORITÉ 2 : Leclerc -> TOTAL 4 ARTICLES
+            match = line.match(/TOTAL\s+(\d+)\s+ARTICLES?/i);
+            if (match) return parseInt(match[1], 10);
+          }
+
+          // Si rien trouvé, on cherche les formats secondaires
+          for (const line of lines) {
+            let match = null;
+
+            match = line.match(/NOMBRE\s+D['’]ARTICLES?\s*[:\-]?\s*(\d+)/i);
+            if (match) return parseInt(match[1], 10);
+
+            match = line.match(/NB\s+ARTICLES?\s*[:\-]?\s*(\d+)/i);
+            if (match) return parseInt(match[1], 10);
+
+            match = line.match(/\b(\d+)\s+ARTICLES?\b/i);
+            if (match) return parseInt(match[1], 10);
+
+            // En dernier seulement : nombre de lignes
+            match = line.match(/NOMBRE\s+DE\s+LIGNES?\s+D['’]ARTICLE\s+(\d+)/i);
+            if (match) return parseInt(match[1], 10);
+          }
+
+          return null;
+        };
+
+        const isSectionHeader = (line) => {
+          if (!line) return false;
+
+          const l = normalizeText(line).toUpperCase().trim();
+
+          const knownHeaders = [
+            "FRUITS",
+            "LEGUMES",
+            "PANIFICATION",
+            "PATES",
+            "PLATS CUISINES",
+            "PETITE PARAPHARMACIE",
+            "JUS ET NECTARS",
+            "FROMAGE COUPE EMBALLE",
+            "CONSERVES DE LEGUMES",
+            "ULTRA FRAIS",
+            "VOLAILLES STANDARD",
+            "TRAITEUR LS UVCI",
+            "REDUCTIONS IMMEDIATES",
+            "BON DE REDUCTION",
+          ];
+
+          return knownHeaders.includes(l);
+        };
+
+        const truncateReceiptForItems = (text) => {
+          const lines = (text || "")
+            .split("\n")
+            .map((l) => normalizeText(l))
+            .filter(Boolean);
+
+          const stopPatterns = [
+            /^TOTAL\s*\[?\s*\d+\s*\]?\s*ARTICLES?/i,
+            /^TOTAL\s+\d+\s+ARTICLES?/i,
+            /^SOUS[\s-]?TOTAL/i,
+            /^TOTAL\s+TVA/i,
+            /^CB\b/i,
+            /CARTE\s+BANCAIRE/i,
+            /CREDIT\s+AGRICOLE/i,
+            /MERCI\s+DE\s+VOTRE\s+VISITE/i,
+          ];
+
+          const stopIndex = lines.findIndex((line) =>
+            stopPatterns.some((rx) => rx.test(line)),
+          );
+
+          if (stopIndex === -1) return lines.join("\n");
+
+          return lines.slice(0, stopIndex).join("\n");
+        };
+
+        const isQuantityLine = (line) => {
+          return extractQuantityInfo(line) !== null;
+        };
+
+        const extractQuantityFromLine = (line) => {
+          const info = extractQuantityInfo(line);
+          return info ? info.qty : null;
+        };
+
+        const extractUnitPriceFromQuantityLine = (line) => {
+          const info = extractQuantityInfo(line);
+          return info ? info.unitPrice : null;
+        };
+
+        const extractTrailingPrice = (line) => {
+          if (!line) return null;
+          const l = normalizeText(line).toUpperCase();
+
+          const m = l.match(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/);
+          return m ? parseFloat(m[1].replace(",", ".")) : null;
+        };
+
+        const isWeightedDetailLine = (line) => {
+          if (!line) return false;
+          const l = normalizeText(line).toUpperCase();
+
+          return (
+            /PESEE MANUELLE/.test(l) ||
+            /PESÉE MANUELLE/.test(l) ||
+            /\d+[.,]\d+\s*KG\s*[Xx]\s*\d+[.,]\d+\s*€?\s*\/?\s*KG/.test(l) ||
+            /\d+[.,]\d+\s*KG\s*[Xx]/.test(l) ||
+            /€\s*\/\s*KG/.test(l)
+          );
+        };
+
+        const extractQuantityInfo = (line) => {
+          if (!line) return null;
+          const l = normalizeText(line).toUpperCase();
+
+          const m = l.match(
+            /(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i,
+          );
+          if (!m) return null;
+
+          return {
+            qty: parseInt(m[1], 10),
+            unitPrice: parseFloat(m[2].replace(",", ".")),
+            totalPrice: m[3] ? parseFloat(m[3].replace(",", ".")) : null,
+          };
+        };
+
+        const stripTrailingQuantitySegment = (line) => {
+          if (!line) return "";
+          return normalizeText(line)
+            .replace(
+              /(\d+)\s*[Xx*]\s*([0-9OIL.,\/]+)\s*(?:€|EUR)?(?:\s+([0-9OIL.,\/]+))?\s*$/i,
+              "",
+            )
+            .trim();
+        };
+
+        const parseReceiptLines = (text) => {
+          let lines = text
+            .split("\n")
+            .map((l) => normalizeText(l))
+            .filter(Boolean);
+
+          const results = [];
+          let pendingName = null;
+          let lastProductIndex = null;
+          let lastProductTotalPrice = null;
+
+          const pushArticle = (rawName, qte = 1) => {
+            const nom = cleanArticleName(rawName);
+            if (!nom || nom.length < 3) return null;
+
+            if (
+              nom.includes("TOTAL") ||
+              nom.includes("MONTANT") ||
+              nom.includes("PAYE") ||
+              nom.includes("TVA") ||
+              nom.includes("CARTE") ||
+              nom.includes("FIDELITE") ||
+              nom.includes("REMISE") ||
+              nom.includes("REDUCTION") ||
+              nom.includes("BON DE REDUCTION")
+            )
+              return null;
+
+            const existing = results.findIndex((p) => p.nom === nom);
+            if (existing !== -1) {
+              results[existing].qte += qte;
+              return existing;
+            }
+
+            const cat = detectCategory(nom);
+
+            const defaultMaturityResult =
+              cat.zone === "Alimentaire" && cat.rayon === "Fruits et Légumes"
+                ? getEstimatedDateFromProduce(nom, 1)
+                : null;
+
+            results.push({
+              nom,
+              qte,
+              dlc: defaultMaturityResult ? defaultMaturityResult.date : "",
+              maturite: defaultMaturityResult
+                ? defaultMaturityResult.maturite
+                : "",
+              congele: false,
+              zone: cat.zone,
+              rayon: cat.rayon,
+              typeStock: "unite",
+            });
+
+            return results.length - 1;
+          };
+
+          for (let i = 0; i < lines.length; i++) {
+            const current = lines[i];
+            const currentUpper = current.toUpperCase();
+            console.log("LINE:", currentUpper);
+
+            if (
+              isNoiseLine(currentUpper) ||
+              isWeightedDetailLine(currentUpper)
+            ) {
+              continue;
+            }
+
+            if (isSectionHeader(currentUpper)) {
+              pendingName = null;
+              lastProductIndex = null;
+              lastProductTotalPrice = null;
+              continue;
+            }
+
+            const qtyInfo = extractQuantityInfo(currentUpper);
+            if (qtyInfo) {
+              console.log("QTY LINE DETECTED:", {
+                line: currentUpper,
+                qtyInfo,
+                pendingName,
+                lastProductIndex,
+                lastProductTotalPrice,
+              });
+            }
+
+            // CAS 1 : ligne avec quantité à la fin, parfois fusionnée avec le produit
+            if (qtyInfo) {
+              const beforeQty = stripTrailingQuantitySegment(currentUpper);
+
+              const beforeQtyWithoutTrailingPrice = beforeQty
                 .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
                 .trim();
 
-            const cleanedBeforeQty = cleanArticleName(beforeQtyWithoutTrailingPrice || beforeQty);
+              const cleanedBeforeQty = cleanArticleName(
+                beforeQtyWithoutTrailingPrice || beforeQty,
+              );
 
-            // Exemple Leclerc :
-            // "BAGUETTE NATURE,280G 2 X 0.85€ 1.70"
-            // Exemple Hyper U fusionné :
-            // "POITRINE PORC FUM.PXM 4TR 300G 5,74 € 11 2 X 2,87 EUR"
-            if (
+              // Exemple Leclerc :
+              // "BAGUETTE NATURE,280G 2 X 0.85€ 1.70"
+              // Exemple Hyper U fusionné :
+              // "POITRINE PORC FUM.PXM 4TR 300G 5,74 € 11 2 X 2,87 EUR"
+              if (
                 cleanedBeforeQty.length >= 3 &&
                 !isSectionHeader(beforeQty) &&
                 !isNoiseLine(beforeQty)
-            ) {
+              ) {
                 lastProductIndex = pushArticle(beforeQty, qtyInfo.qty);
                 pendingName = null;
                 lastProductTotalPrice = extractTrailingPrice(beforeQty);
                 continue;
-            }
+              }
 
-            // CAS 2 : vraie ligne quantité seule, juste sous le produit
-            if (lastProductIndex !== null) {
+              // CAS 2 : vraie ligne quantité seule, juste sous le produit
+              if (lastProductIndex !== null) {
                 if (
-                    qtyInfo.unitPrice !== null &&
-                    lastProductTotalPrice !== null &&
-                    Math.abs((qtyInfo.qty * qtyInfo.unitPrice) - lastProductTotalPrice) < 0.03
+                  qtyInfo.unitPrice !== null &&
+                  lastProductTotalPrice !== null &&
+                  Math.abs(
+                    qtyInfo.qty * qtyInfo.unitPrice - lastProductTotalPrice,
+                  ) < 0.03
                 ) {
+                  results[lastProductIndex].qte = qtyInfo.qty;
+                } else if (
+                  qtyInfo.totalPrice !== null &&
+                  lastProductTotalPrice !== null
+                ) {
+                  if (
+                    Math.abs(qtyInfo.totalPrice - lastProductTotalPrice) < 0.03
+                  ) {
                     results[lastProductIndex].qte = qtyInfo.qty;
-                } else if (qtyInfo.totalPrice !== null && lastProductTotalPrice !== null) {
-                    if (Math.abs(qtyInfo.totalPrice - lastProductTotalPrice) < 0.03) {
-                        results[lastProductIndex].qte = qtyInfo.qty;
-                    }
+                  }
                 } else {
-                    results[lastProductIndex].qte = qtyInfo.qty;
+                  results[lastProductIndex].qte = qtyInfo.qty;
                 }
                 continue;
-            }
+              }
 
-            if (pendingName && !isSectionHeader(pendingName)) {
+              if (pendingName && !isSectionHeader(pendingName)) {
                 lastProductIndex = pushArticle(pendingName, qtyInfo.qty);
                 pendingName = null;
                 continue;
+              }
+
+              continue;
             }
 
-            continue;
-        }
-
-        // Ligne produit avec prix sur la même ligne
-        if (isPriceLine(currentUpper)) {
-            let candidate = currentUpper
+            // Ligne produit avec prix sur la même ligne
+            if (isPriceLine(currentUpper)) {
+              let candidate = currentUpper
                 .replace(/(\d+[.,]\d{2})\s*(€|EUR)?(\s+\d{1,2})?\s*$/, "")
                 .trim();
 
-            const totalPrice = extractTrailingPrice(currentUpper);
-            console.log("PRICE LINE:", {
-    line: currentUpper,
-    candidate,
-    totalPrice
-});
+              const totalPrice = extractTrailingPrice(currentUpper);
+              console.log("PRICE LINE:", {
+                line: currentUpper,
+                candidate,
+                totalPrice,
+              });
 
-            if (
+              if (
                 cleanArticleName(candidate).length >= 3 &&
                 !isSectionHeader(candidate) &&
                 !isNoiseLine(candidate)
-            ) {
+              ) {
                 lastProductIndex = pushArticle(candidate, 1);
                 pendingName = null;
                 lastProductTotalPrice = totalPrice;
                 continue;
-            }
+              }
 
-            if (pendingName && !isSectionHeader(pendingName)) {
+              if (pendingName && !isSectionHeader(pendingName)) {
                 lastProductIndex = pushArticle(pendingName, 1);
                 pendingName = null;
                 lastProductTotalPrice = totalPrice;
                 continue;
+              }
+
+              continue;
             }
 
-            continue;
-        }
+            // Ligne article potentielle
+            const cleaned = cleanArticleName(currentUpper);
+            if (
+              cleaned.length >= 3 &&
+              !isSectionHeader(currentUpper) &&
+              !isNoiseLine(currentUpper) &&
+              !isWeightedDetailLine(currentUpper)
+            ) {
+              pendingName = currentUpper;
+              lastProductIndex = null;
+              lastProductTotalPrice = null;
+            }
+          }
 
-        // Ligne article potentielle
-        const cleaned = cleanArticleName(currentUpper);
-        if (
-            cleaned.length >= 3 &&
-            !isSectionHeader(currentUpper) &&
-            !isNoiseLine(currentUpper) &&
-            !isWeightedDetailLine(currentUpper)
-        ) {
-            pendingName = currentUpper;
-            lastProductIndex = null;
-            lastProductTotalPrice = null;
-        }
-    }
+          return results;
+        };
 
-    return results;
-};
+        // --- SCANNER TICKET ---
+        const scanTicket = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
 
+          setLoading(true);
+          setReceiptItems([]);
+          setReceiptStats({
+            detectedLines: 0,
+            detectedQty: 0,
+            ticketQty: null,
+          });
 
+          let worker = null;
+          let objectUrl = null;
 
+          try {
+            let source = "";
 
-            
-            // --- SCANNER TICKET ---
-            const scanTicket = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+            if (file.type === "application/pdf") {
+              const arrayBuffer = await file.arrayBuffer();
+              const pdf = await pdfjsLib.getDocument({ data: arrayBuffer })
+                .promise;
 
-    setLoading(true);
-setReceiptItems([]);
-setReceiptStats({
-    detectedLines: 0,
-    detectedQty: 0,
-    ticketQty: null
-});
+              // On lit les 2 premières pages max, utile si ticket PDF un peu long
+              let fullText = "";
 
-    let worker = null;
-    let objectUrl = null;
-
-    try {
-        let source = "";
-
-        if (file.type === "application/pdf") {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-            // On lit les 2 premières pages max, utile si ticket PDF un peu long
-            let fullText = "";
-
-            for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 2); pageNum++) {
+              for (
+                let pageNum = 1;
+                pageNum <= Math.min(pdf.numPages, 2);
+                pageNum++
+              ) {
                 const page = await pdf.getPage(pageNum);
                 const viewport = page.getViewport({ scale: 2.5 });
                 const canvas = document.createElement("canvas");
@@ -1142,712 +1636,1175 @@ setReceiptStats({
                 const imgData = canvas.toDataURL("image/png");
 
                 if (!worker) {
-                    worker = await Tesseract.createWorker("fra");
-                    await worker.setParameters({
-                        preserve_interword_spaces: "1"
-                    });
+                  worker = await Tesseract.createWorker("fra");
+                  await worker.setParameters({
+                    preserve_interword_spaces: "1",
+                  });
                 }
 
-                const { data: { text } } = await worker.recognize(imgData);
+                const {
+                  data: { text },
+                } = await worker.recognize(imgData);
                 fullText += "\n" + text;
+              }
+
+              const rawText = fullText;
+              const itemsText = truncateReceiptForItems(rawText);
+
+              const items = parseReceiptLines(itemsText);
+              console.log("RAW OCR TEXT PDF:");
+              console.log(rawText);
+              console.log("ITEMS TEXT PDF:");
+              console.log(itemsText);
+
+              const ticketQty = extractTicketArticleCount(rawText);
+
+              setReceiptItems(items);
+              setReceiptStats({
+                detectedLines: items.length,
+                detectedQty: items.reduce(
+                  (sum, item) => sum + (Number(item.qte) || 0),
+                  0,
+                ),
+                ticketQty,
+              });
+            } else {
+              objectUrl = URL.createObjectURL(file);
+              source = objectUrl;
+
+              worker = await Tesseract.createWorker("fra");
+              await worker.setParameters({
+                preserve_interword_spaces: "1",
+              });
+
+              const {
+                data: { text },
+              } = await worker.recognize(source);
+              const rawText = text;
+              const itemsText = truncateReceiptForItems(rawText);
+
+              const items = parseReceiptLines(itemsText);
+              console.log("RAW OCR TEXT IMAGE:");
+              console.log(rawText);
+              console.log("ITEMS TEXT IMAGE:");
+              console.log(itemsText);
+
+              const ticketQty = extractTicketArticleCount(rawText);
+
+              setReceiptItems(items);
+              setReceiptStats({
+                detectedLines: items.length,
+                detectedQty: items.reduce(
+                  (sum, item) => sum + (Number(item.qte) || 0),
+                  0,
+                ),
+                ticketQty,
+              });
             }
-
-            const rawText = fullText;
-const itemsText = truncateReceiptForItems(rawText);
-
-const items = parseReceiptLines(itemsText);
-        console.log("RAW OCR TEXT PDF:");
-console.log(rawText);
-console.log("ITEMS TEXT PDF:");
-console.log(itemsText);
-
-            
-const ticketQty = extractTicketArticleCount(rawText);
-
-setReceiptItems(items);
-setReceiptStats({
-    detectedLines: items.length,
-    detectedQty: items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0),
-    ticketQty
-});
-        } else {
-            objectUrl = URL.createObjectURL(file);
-            source = objectUrl;
-
-            worker = await Tesseract.createWorker("fra");
-            await worker.setParameters({
-                preserve_interword_spaces: "1"
-            });
-
-            const { data: { text } } = await worker.recognize(source);
-            const rawText = text;
-const itemsText = truncateReceiptForItems(rawText);
-
-const items = parseReceiptLines(itemsText);
-console.log("RAW OCR TEXT IMAGE:");
-console.log(rawText);
-console.log("ITEMS TEXT IMAGE:");
-console.log(itemsText);
-
-            
-const ticketQty = extractTicketArticleCount(rawText);
-
-setReceiptItems(items);
-setReceiptStats({
-    detectedLines: items.length,
-    detectedQty: items.reduce((sum, item) => sum + (Number(item.qte) || 0), 0),
-    ticketQty
-});
-        }
-    } catch (err) {
-        console.error("Erreur scan ticket :", err);
-        alert("Impossible d'analyser ce ticket.");
-    } finally {
-        if (worker) await worker.terminate();
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        setLoading(false);
-        e.target.value = "";
-    }
-};
-            const updateStock = (id, delta) => {
-                const newP = produits.map(p => {
-                    if (p.id !== id) return p;
-                    let next = p.typeStock === 'pourcent' ? Number(p.stock) + (delta * 25) : Number(p.stock) + delta;
-                    if (next <= 0) { setConfirmDelete({ show: true, produit: p }); return p; }
-                    const u = { ...p, stock: Math.max(0, p.typeStock === 'pourcent' ? Math.min(100, next) : next) };
-                    syncWithServer(u); return u;
-                });
-                setProduits(newP);
+          } catch (err) {
+            console.error("Erreur scan ticket :", err);
+            alert("Impossible d'analyser ce ticket.");
+          } finally {
+            if (worker) await worker.terminate();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            setLoading(false);
+            e.target.value = "";
+          }
+        };
+        const updateStock = (id, delta) => {
+          const newP = produits.map((p) => {
+            if (p.id !== id) return p;
+            let next =
+              p.typeStock === "pourcent"
+                ? Number(p.stock) + delta * 25
+                : Number(p.stock) + delta;
+            if (next <= 0) {
+              setConfirmDelete({ show: true, produit: p });
+              return p;
+            }
+            const u = {
+              ...p,
+              stock: Math.max(
+                0,
+                p.typeStock === "pourcent" ? Math.min(100, next) : next,
+              ),
             };
-
-            if (!isLoggedIn) return (
-                <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6">
-                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
-                        <form onSubmit={(e) => { e.preventDefault(); const pass = e.target.p.value; const users = {[PASS_BAPTISTE]:'baptiste',[PASS_SOEUR]:'soeur',[PASS_PERE]:'pere'}; if(users[pass]){localStorage.setItem('stock_user',users[pass]);localStorage.setItem('stock_session','active');setIsLoggedIn(true);}}} className="space-y-4">
-                            <h2 className="font-black uppercase text-center mb-4">Accès Privé</h2>
-                            <input name="p" type="password" inputMode="numeric" placeholder="Code..." className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none transition-all focus:border-green-500" />
-                            <button type="submit" className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all">Connexion</button>
-                        </form>
-                    </div>
-                </div>
-            );
-
-            return (
-                <div className="max-w-md mx-auto min-h-screen pb-32">
-                    <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
-                        <div className="flex justify-between items-center mb-4">
-                            <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">MON STOCKAGE</h1>
-                            <div className="flex gap-2">
-                                <button onClick={() => setView('receipt')} className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">🧾 Ticket</button>
-                                <button onClick={() => setView(view === 'home' ? 'shopping' : 'home')} className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm">{view === 'home' ? 'Courses' : 'Stock'}</button>
-                            </div>
-                        </div>
-                        {view === 'home' && <input type="text" placeholder="🔍 Rechercher..." className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />}
-                    </header>
-
-                    <main className="p-4">
-                        {/* SCANNER CODE-BARRE */}
-                        {view === 'home' && (
-                            <div className="mb-6 space-y-4">
-                                {!isScanningBarcode ? (
-                                    <button onClick={startBarcode} className="w-full p-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-black uppercase text-[10px] shadow-sm flex items-center justify-center gap-3 active:scale-95 transition-all">
-                                        📷 Scanner un Code-Barre
-                                    </button>
-                                ) : (
-                                    <div className="relative animate-up h-64 bg-black rounded-[2rem] overflow-hidden border-4 border-green-500" id="barcode-ui">
-                <button onClick={() => { Quagga.stop(); setIsScanningBarcode(false); }} className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black z-20">
-                    ANNULER
-                </button>
-                <div className="absolute inset-0 border-2 border-green-500/30 pointer-events-none flex items-center justify-center">
-                    <div className="w-[80%] h-[2px] bg-green-500 shadow-[0_0_15px_green] animate-pulse"></div>
-                </div>
-            </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-            <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-black uppercase text-orange-500 tracking-widest">
-                    DLC proche
-                </div>
-                <div className="mt-1 text-2xl font-black text-orange-600">
-                    {warningCount}
-                </div>
-            </div>
-
-            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 shadow-sm">
-                <div className="text-[9px] font-black uppercase text-red-500 tracking-widest">
-                    Périmé
-                </div>
-                <div className="mt-1 text-2xl font-black text-red-600">
-                    {expiredCount}
-                </div>
-            </div>
-        </div>
-    </div>
-)}
-
-                        {/* VUE TICKET */}
-                        {view === 'receipt' && (
-                            <div className="animate-up space-y-4">
-                                <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-200">
-                                    <input type="file" accept="image/*,application/pdf" onChange={scanTicket} id="r-up" className="hidden" />
-                                    <label htmlFor="r-up" className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg">📷 PHOTO OU PDF</label>
-                                    {loading && <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">Analyse en cours...</p>}
-                                </div>
-                                {(receiptItems.length > 0 || receiptStats.ticketQty !== null) && (
-    <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-2">
-        <h3 className="font-black text-[10px] uppercase text-gray-400 tracking-widest">
-            Vérification du ticket
-        </h3>
-
-        <div className="flex justify-between text-xs">
-            <span className="font-bold text-gray-500">Produits détectés :</span>
-            <span className="font-black text-gray-800">{receiptStats.detectedLines}</span>
-        </div>
-
-        <div className="flex justify-between text-xs">
-            <span className="font-bold text-gray-500">Quantité totale détectée :</span>
-            <span className="font-black text-gray-800">{receiptStats.detectedQty}</span>
-        </div>
-
-        <div className="flex justify-between text-xs">
-            <span className="font-bold text-gray-500">Nombre indiqué sur le ticket :</span>
-            <span className="font-black text-gray-800">
-                {receiptStats.ticketQty !== null ? receiptStats.ticketQty : "Non trouvé"}
-            </span>
-        </div>
-
-        {receiptStats.ticketQty !== null && (
-            <div className={`mt-2 text-[10px] font-black uppercase ${
-                receiptStats.detectedQty === receiptStats.ticketQty
-                    ? 'text-green-600'
-                    : 'text-orange-500'
-            }`}>
-                {receiptStats.detectedQty === receiptStats.ticketQty
-                    ? '✔ Le compte semble bon'
-                    : `⚠ Écart détecté : ${receiptStats.ticketQty - receiptStats.detectedQty}`}
-            </div>
-        )}
-    </div>
-)}
-                                {receiptItems.map((item, idx) => (
-                                    <div key={idx} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">{item.nom}</span>
-                                            {item.typeStock === 'unite' && (
-                                                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                                                    <button onClick={() => { const n = [...receiptItems]; n[idx].qte = Math.max(1, n[idx].qte - 1); setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">-</button>
-                                                    <span className="px-2 font-black text-xs">x{item.qte}</span>
-                                                    <button onClick={() => { const n = [...receiptItems]; n[idx].qte += 1; setReceiptItems(n); }} className="w-6 h-6 bg-white rounded font-bold">+</button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'unite'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === 'unite' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>Unités</button>
-                                            <button onClick={() => { const n = [...receiptItems]; n[idx].typeStock = 'pourcent'; setReceiptItems(n); }} className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === 'pourcent' ? 'bg-white shadow-sm' : 'text-gray-400'}`}>%</button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-    <select
-        className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-        value={item.zone}
-        onChange={(e) => {
-            const n = [...receiptItems];
-            n[idx].zone = e.target.value;
-            n[idx].rayon = STRUCTURE[e.target.value].rayons[0].id;
-
-            if (n[idx].zone === "Alimentaire" && n[idx].rayon === "Fruits et Légumes") {
-                const result = getEstimatedDateFromProduce(n[idx].nom, 1);
-                n[idx].maturite = result.maturite;
-                n[idx].dlc = result.date;
-            } else {
-                n[idx].maturite = "";
-                n[idx].dlc = "";
-            }
-
-            setReceiptItems(n);
-        }}
-    >
-        {Object.keys(STRUCTURE).map(z => (
-            <option key={z} value={z}>{z}</option>
-        ))}
-    </select>
-
-    <select
-        className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-        value={item.rayon}
-        onChange={(e) => {
-            const n = [...receiptItems];
-            n[idx].rayon = e.target.value;
-
-            if (e.target.value !== "Fruits et Légumes") {
-                n[idx].maturite = "";
-                n[idx].dlc = "";
-            } else {
-                const result = getEstimatedDateFromProduce(n[idx].nom, 1);
-                n[idx].maturite = result.maturite;
-                n[idx].dlc = result.date;
-            }
-
-            setReceiptItems(n);
-        }}
-    >
-        {STRUCTURE[item.zone].rayons.map(r => (
-            <option key={r.id} value={r.id}>{r.id}</option>
-        ))}
-    </select>
-</div>
-                                        {item.zone === "Alimentaire" && item.rayon === "Fruits et Légumes" ? (
-    <div className="space-y-2">
-        <div className="flex gap-1">
-            {["Pas mûr", "Bientôt", "Mûr"].map((label, maturityIdx) => {
-                const trueLabel =
-                    maturityIdx === 0 ? "Pas mûr" :
-                    maturityIdx === 1 ? "Bientôt mûr" :
-                    "Mûr";
-
-                return (
-                    <button
-                        key={label}
-                        type="button"
-                        onClick={() => {
-                            const n = [...receiptItems];
-                            const result = getEstimatedDateFromProduce(n[idx].nom, maturityIdx);
-                            n[idx].maturite = result.maturite;
-                            n[idx].dlc = result.date;
-                            setReceiptItems(n);
-                        }}
-                        className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all border ${
-                            item.maturite === trueLabel
-                                ? 'bg-orange-500 border-orange-600 text-white'
-                                : 'bg-gray-50 border-transparent text-gray-400'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                );
-            })}
-        </div>
-
-        <div className="flex gap-2">
-            <input
-                type="date"
-                className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-                value={item.dlc}
-                onChange={(e) => {
-                    const n = [...receiptItems];
-                    n[idx].dlc = e.target.value;
-                    setReceiptItems(n);
-                }}
-            />
-            <button
-                onClick={() => {
-                    const n = [...receiptItems];
-                    n[idx].congele = !n[idx].congele;
-                    setReceiptItems(n);
-                }}
-                className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 text-white shadow-inner' : 'bg-gray-100'}`}
-            >
-                ❄️
-            </button>
-        </div>
-    </div>
-) : (
-    <div className="flex gap-2">
-        <input
-            type="date"
-            className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
-            value={item.dlc}
-            onChange={(e) => {
-                const n = [...receiptItems];
-                n[idx].dlc = e.target.value;
-                setReceiptItems(n);
-            }}
-        />
-        <button
-            onClick={() => {
-                const n = [...receiptItems];
-                n[idx].congele = !n[idx].congele;
-                setReceiptItems(n);
-            }}
-            className={`p-2 rounded-xl text-lg ${item.congele ? 'bg-blue-500 text-white shadow-inner' : 'bg-gray-100'}`}
-        >
-            ❄️
-        </button>
-    </div>
-)}
-                                    </div>
-                                ))}
-                                {receiptItems.length > 0 && <button onClick={async () => { setLoading(true); for(const i of receiptItems){ await syncWithServer({id:Date.now()+Math.random(),nom:i.nom,zone:i.zone,rayon:i.rayon,typeStock:i.typeStock,stock:i.typeStock==='pourcent'?100:i.qte,date:i.dlc,congele:i.congele?1:0}); } window.location.reload(); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest">Enregistrer au stock 🚀</button>}
-                            </div>
-                        )}
-
-                        {/* STOCK REPLIABLE */}
-                        {view === 'home' && Object.keys(STRUCTURE).map(zone => {
-                            const zItems = produits.filter(p => p.zone === zone && Number(p.stock) > 0 && p.nom.toLowerCase().includes(searchTerm.toLowerCase()));
-                            if (zItems.length === 0) return null;
-                            return (
-                                <div key={zone} className="mb-3">
-                                    <button onClick={() => setOpenSections(prev => ({...prev, [zone]: !prev[zone]}))} className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-widest">
-                                        <span>{STRUCTURE[zone].icon} {zone}</span>
-                                        <span className="opacity-30">{openSections[zone] ? '▲' : '▼'}</span>
-                                    </button>
-                                    {openSections[zone] && STRUCTURE[zone].rayons.map(ray => {
-                                        const rItems = zItems.filter(p => p.rayon === ray.id);
-                                        if (rItems.length === 0) return null;
-                                        return (
-                                            <div key={ray.id} className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2 animate-up">
-                                                <button onClick={() => setOpenSections(prev => ({...prev, [ray.id]: !prev[ray.id]}))} className="w-full p-3 px-5 bg-gray-50/50 flex justify-between text-[9px] font-black uppercase text-gray-400">
-                                                    <span>{ray.icon} {ray.id}</span>
-                                                    <span>{rItems.length} {openSections[ray.id] ? '▲' : '▼'}</span>
-                                                </button>
-                                                {openSections[ray.id] && rItems.map(p => (
-                                                    <div key={p.id} className="p-4 flex justify-between items-center border-t border-gray-50">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">{p.nom}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span
-    className={`text-[9px] italic font-bold uppercase tracking-tighter px-2 py-0.5 rounded ${
-        getDlcStatus(p.date) === "expired"
-            ? "bg-red-100 text-red-600"
-            : getDlcStatus(p.date) === "warning"
-            ? "bg-orange-100 text-orange-600"
-            : "text-gray-400"
-    }`}
->
-    {formatDateFR(p.date)}
-</span>
-                                                                {p.maturite && (
-        <span className="text-[8px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-black uppercase">
-            {p.maturite}
-        </span>
-    )}
-
-    {p.note && (
-        <span className="text-[8px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-black uppercase">
-            {p.note}
-        </span>
-    )}
-                                                                {p.congele == 1 && <span className="text-[9px]">❄️</span>}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">{p.typeStock === 'pourcent' ? p.stock+'%' : 'x'+p.stock}</span>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => { const u={...p, congele: p.congele==1?0:1}; setProduits(produits.map(i => i.id===p.id?u:i)); syncWithServer(u); }} className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${p.congele==1?'bg-blue-500 text-white shadow-inner':'bg-white text-gray-200 border-gray-100'}`}>❄️</button>
-                                                                <button onClick={() => updateStock(p.id, -1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">-</button>
-                                                                <button onClick={() => updateStock(p.id, 1)} className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90">+</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
-
-                        {/* COURSES */}
-                        {view === 'shopping' && (
-    <>
-        <div className="mb-4">
-            <button
-                onClick={() => setShowSeasonModal(true)}
-                className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-black uppercase text-[10px] shadow-sm"
-            >
-                🥕 Voir les fruits et légumes de saison
-            </button>
-        </div>
-
-        <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
-            {produits.filter(p => Number(p.stock) === 0).length === 0 ? (
-                <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-20 font-black">
-                    Liste vide
-                </p>
-            ) : (
-                produits.filter(p => Number(p.stock) === 0).map(p => (
-                    <div key={p.id} className="flex items-center justify-between p-5 px-6 active:bg-gray-50">
-                        <div className="flex items-center gap-4">
-                            <input type="checkbox" className="w-6 h-6 accent-green-600 rounded-lg shadow-sm" />
-                            <div>
-                                <p className="font-bold text-sm text-gray-700 uppercase leading-none">{p.nom}</p>
-                                <p className="text-[8px] font-black uppercase text-gray-300 mt-1">{p.rayon}</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => {
-                                fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`);
-                                setProduits(produits.filter(i => i.id !== p.id));
-                            }}
-                            className="text-gray-200 p-2 text-lg"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                ))
-            )}
-        </div>
-    </>
-)}
-                    </main>
-
-                    {/* MODALE AJOUT MANUEL */}
-                    {showAddModal && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[60] p-4">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
-                                <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">Nouveau Produit</h2>
-                                <input type="text" placeholder="NOM DU PRODUIT..." className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner" value={form.nom} onChange={e => setForm({...form, nom: e.target.value.toUpperCase()})} />
-                                <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl shadow-inner">
-                                    <button onClick={() => setForm({...form, typeStock: 'unite'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'unite' ? 'bg-white shadow-md text-black' : 'text-gray-300'}`}>Unités</button>
-                                    <button onClick={() => setForm({...form, typeStock: 'pourcent'})} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === 'pourcent' ? 'bg-white shadow-md text-black' : 'text-gray-400'}`}>Pourcent %</button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
-    <select
-        className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-        value={form.zone}
-        onChange={e => setForm({
-            ...form,
-            zone: e.target.value,
-            rayon: STRUCTURE[e.target.value].rayons[0].id,
-            ...(STRUCTURE[e.target.value].rayons[0].id !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
-        })}
-    >
-        {Object.keys(STRUCTURE).map(z => (
-            <option key={z} value={z}>{z}</option>
-        ))}
-    </select>
-
-    <select
-        className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-        value={form.rayon}
-        onChange={e => setForm({
-            ...form,
-            rayon: e.target.value,
-            ...(e.target.value !== "Fruits et Légumes" ? { maturite: '', date: '' } : {})
-        })}
-    >
-        {STRUCTURE[form.zone].rayons.map(r => (
-            <option key={r.id} value={r.id}>{r.id}</option>
-        ))}
-    </select>
-</div>
-                                <div className="mb-6 space-y-3">
-    {form.rayon === "Fruits et Légumes" ? (
-        <div className="space-y-3">
-            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
-                État de maturité :
-            </p>
-
-            <div className="flex gap-1">
-                {["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => {
-                    const trueLabel = idx === 0 ? "Pas mûr" : idx === 1 ? "Bientôt mûr" : "Mûr";
-
-                    return (
-                        <button
-                            key={label}
-                            type="button"
-                            onClick={() => handleMaturity(form.nom, idx)}
-                            className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${
-                                form.maturite === trueLabel
-                                    ? 'bg-orange-500 border-orange-600 text-white shadow-lg'
-                                    : 'bg-gray-50 border-transparent text-gray-400'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    );
-                })}
-            </div>
-
-            <input
-                type="date"
-                className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-            />
-
-            {form.date && (
-                <p className="text-center text-[9px] font-bold text-orange-600 uppercase">
-                    Prévu jusqu’au : {form.date.split("-").reverse().join("/")}
-                </p>
-            )}
-        </div>
-    ) : (
-        <div className="space-y-2">
-            <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
-                Date de péremption :
-            </p>
-            <input
-                type="date"
-                className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-                value={form.date}
-                onChange={e => setForm({ ...form, date: e.target.value })}
-            />
-        </div>
-    )}
-
-    <input
-        type="number"
-        placeholder="QTÉ"
-        className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
-        value={form.stock}
-        onChange={e => setForm({ ...form, stock: Number(e.target.value) })}
-    />
-</div>
-                                <div className="space-y-3 mb-8">
-                                    <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
-                                        <input type="checkbox" checked={form.congele} onChange={e => setForm({...form, congele: e.target.checked})} className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm" />
-                                        <span className="text-[10px] font-black text-blue-800 uppercase italic">Placé au congélateur ❄️</span>
-                                    </label>
-                                    <label className="flex items-center gap-3 p-4 bg-red-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
-                                        <input type="checkbox" checked={form.directShopping} onChange={e => setForm({...form, directShopping: e.target.checked})} className="w-6 h-6 accent-red-500 rounded-lg shadow-sm" />
-                                        <span className="text-[10px] font-black text-red-700 uppercase italic">Ajouter directement aux courses 🛒</span>
-                                    </label>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <button onClick={async () => { const n={...form,id:Date.now(),stock:form.directShopping?0:Number(form.stock),congele:form.congele?1:0,checked:0}; setProduits([n,...produits]); await syncWithServer(n); setShowAddModal(false); setForm({
-    nom: '',
-    zone: 'Alimentaire',
-    rayon: 'Fruits et Légumes',
-    typeStock: 'unite',
-    stock: 1,
-    date: '',
-    maturite: '',
-    directShopping: false,
-    congele: false
-}); }} className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95 transition-all">Enregistrer ✅</button>
-                                    <button onClick={() => { setShowAddModal(false); setForm({
-    nom: '',
-    zone: 'Alimentaire',
-    rayon: 'Fruits et Légumes',
-    typeStock: 'unite',
-    stock: 1,
-    date: '',
-    maturite: '',
-    directShopping: false,
-    congele: false
-}); }} className="w-full text-gray-300 text-[10px] font-black uppercase text-center py-2">Annuler</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODALE SUPPRESSION DESIGN */}
-                    {confirmDelete.show && (
-                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6 text-center">
-                            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up border-4 border-green-500">
-                                <div className="text-4xl mb-4">🛒</div>
-                                <h3 className="font-black uppercase text-sm mb-2 text-gray-800">Stock épuisé !</h3>
-                                <p className="text-gray-500 text-xs mb-8 leading-relaxed">Ajouter <span className="text-green-600 font-bold">{confirmDelete.produit?.nom}</span> à votre liste de courses ?</p>
-                                <div className="flex flex-col gap-3">
-                                    <button onClick={() => { const p=confirmDelete.produit; const u={...p,stock:0}; setProduits(produits.map(i=>i.id===p.id?u:i)); syncWithServer(u); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all">Oui, mettre en courses</button>
-                                    <button onClick={() => { const p=confirmDelete.produit; fetch(`${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`); setProduits(produits.filter(i=>i.id!==p.id)); setConfirmDelete({show:false,produit:null}); }} className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all">Non, supprimer</button>
-                                    <button onClick={() => setConfirmDelete({show:false,produit:null})} className="text-[9px] font-black text-gray-300 uppercase mt-2">Annuler</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {showSeasonModal && (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[80] p-4">
-        <div className="bg-white w-full rounded-[2.5rem] p-6 max-w-sm mx-auto animate-up shadow-2xl">
-            <h2 className="text-center font-black mb-6 uppercase text-gray-400 text-[10px] tracking-widest italic">
-                Produits de saison
-            </h2>
-
-            <div className="space-y-5">
-                <div>
-                    <h3 className="font-black text-[10px] uppercase text-orange-500 mb-2">Fruits</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {getCurrentMonthSeason().fruits.map(item => (
-                            <button
-                                key={item}
-                                onClick={async () => {
-    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
-
-    const result = getEstimatedDateFromProduce(item, 1);
-
-    const n = {
-        id: Date.now() + Math.random(),
-        nom: item,
-        zone: "Alimentaire",
-        rayon: "Fruits et Légumes",
-        typeStock: "unite",
-        stock: 0,
-        date: result.date,
-        maturite: result.maturite,
-        note: "Produit de saison",
-        congele: 0
-    };
-
-    setProduits(prev => [n, ...prev]);
-    await syncWithServer(n);
-}}
-                                className="px-3 py-2 bg-orange-50 text-orange-600 rounded-xl text-[9px] font-black uppercase"
-                            >
-                                {item}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <h3 className="font-black text-[10px] uppercase text-green-600 mb-2">Légumes</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {getCurrentMonthSeason().legumes.map(item => (
-                            <button
-                                key={item}
-                                onClick={async () => {
-    if (produits.some(p => p.nom === item && Number(p.stock) === 0)) return;
-
-    const result = getEstimatedDateFromProduce(item, 1);
-
-    const n = {
-        id: Date.now() + Math.random(),
-        nom: item,
-        zone: "Alimentaire",
-        rayon: "Fruits et Légumes",
-        typeStock: "unite",
-        stock: 0,
-        date: result.date,
-        maturite: result.maturite,
-        note: "Produit de saison",
-        congele: 0
-    };
-
-    setProduits(prev => [n, ...prev]);
-    await syncWithServer(n);
-}}
-                                className="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-[9px] font-black uppercase"
-                            >
-                                {item}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <button
-                onClick={() => setShowSeasonModal(false)}
-                className="w-full mt-6 bg-black text-white p-4 rounded-2xl font-black uppercase text-[10px]"
-            >
-                Fermer
-            </button>
-        </div>
-    </div>
-)}
-
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
-                        <button onClick={() => setView('home')} className={`p-4 transition-all duration-300 ${view==='home'?'text-green-600 scale-125':'text-gray-200'}`}>🏠</button>
-                        <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter">＋</button>
-                        <button onClick={() => setView('shopping')} className={`p-4 transition-all duration-300 ${view==='shopping'?'text-green-600 scale-125':'text-gray-200'}`}>🛒</button>
-                    </nav>
-                </div>
-            );
+            syncWithServer(u);
+            return u;
+          });
+          setProduits(newP);
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        if (!isLoggedIn)
+          return (
+            <div className="fixed inset-0 bg-green-600 flex items-center justify-center p-6">
+              <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const pass = e.target.p.value;
+                    const users = {
+                      [PASS_BAPTISTE]: "baptiste",
+                      [PASS_SOEUR]: "soeur",
+                      [PASS_PERE]: "pere",
+                    };
+                    if (users[pass]) {
+                      localStorage.setItem("stock_user", users[pass]);
+                      localStorage.setItem("stock_session", "active");
+                      setIsLoggedIn(true);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <h2 className="font-black uppercase text-center mb-4">
+                    Accès Privé
+                  </h2>
+                  <input
+                    name="p"
+                    type="password"
+                    inputMode="numeric"
+                    placeholder="Code..."
+                    className="w-full p-5 bg-gray-50 rounded-2xl border-2 text-center text-xl outline-none transition-all focus:border-green-500"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-black text-white p-5 rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    Connexion
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+
+        return (
+          <div className="max-w-md mx-auto min-h-screen pb-32">
+            <header className="bg-white p-5 sticky top-0 z-30 border-b shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">
+                  MON STOCKAGE
+                </h1>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setView("receipt")}
+                    className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
+                  >
+                    🧾 Ticket
+                  </button>
+                  <button
+                    onClick={() =>
+                      setView(view === "home" ? "shopping" : "home")
+                    }
+                    className="bg-black text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
+                  >
+                    {view === "home" ? "Courses" : "Stock"}
+                  </button>
+                </div>
+              </div>
+              {view === "home" && (
+                <input
+                  type="text"
+                  placeholder="🔍 Rechercher..."
+                  className="w-full px-4 py-3 bg-gray-100 rounded-2xl text-sm outline-none border-none focus:ring-2 focus:ring-green-500"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              )}
+            </header>
+
+            <main className="p-4">
+              {/* SCANNER CODE-BARRE */}
+              {view === "home" && (
+                <div className="mb-6 space-y-4">
+                  {!isScanningBarcode ? (
+                    <button
+                      onClick={startBarcode}
+                      className="w-full p-4 bg-white border-2 border-green-500 text-green-600 rounded-2xl font-black uppercase text-[10px] shadow-sm flex items-center justify-center gap-3 active:scale-95 transition-all"
+                    >
+                      📷 Scanner un Code-Barre
+                    </button>
+                  ) : (
+                    <div
+                      className="relative animate-up h-64 bg-black rounded-[2rem] overflow-hidden border-4 border-green-500"
+                      id="barcode-ui"
+                    >
+                      <button
+                        onClick={() => {
+                          Quagga.stop();
+                          setIsScanningBarcode(false);
+                        }}
+                        className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black z-20"
+                      >
+                        ANNULER
+                      </button>
+                      <div className="absolute inset-0 border-2 border-green-500/30 pointer-events-none flex items-center justify-center">
+                        <div className="w-[80%] h-[2px] bg-green-500 shadow-[0_0_15px_green] animate-pulse"></div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 shadow-sm">
+                      <div className="text-[9px] font-black uppercase text-orange-500 tracking-widest">
+                        DLC proche
+                      </div>
+                      <div className="mt-1 text-2xl font-black text-orange-600">
+                        {warningCount}
+                      </div>
+                    </div>
+
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 shadow-sm">
+                      <div className="text-[9px] font-black uppercase text-red-500 tracking-widest">
+                        Périmé
+                      </div>
+                      <div className="mt-1 text-2xl font-black text-red-600">
+                        {expiredCount}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* VUE TICKET */}
+              {view === "receipt" && (
+                <div className="animate-up space-y-4">
+                  <div className="bg-white p-8 rounded-[2.5rem] text-center border-2 border-dashed border-gray-200">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={scanTicket}
+                      id="r-up"
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="r-up"
+                      className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs cursor-pointer inline-block shadow-lg"
+                    >
+                      📷 PHOTO OU PDF
+                    </label>
+                    {loading && (
+                      <p className="mt-4 text-[9px] font-black text-blue-500 animate-pulse uppercase">
+                        Analyse en cours...
+                      </p>
+                    )}
+                  </div>
+                  {(receiptItems.length > 0 ||
+                    receiptStats.ticketQty !== null) && (
+                    <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-2">
+                      <h3 className="font-black text-[10px] uppercase text-gray-400 tracking-widest">
+                        Vérification du ticket
+                      </h3>
+
+                      <div className="flex justify-between text-xs">
+                        <span className="font-bold text-gray-500">
+                          Produits détectés :
+                        </span>
+                        <span className="font-black text-gray-800">
+                          {receiptStats.detectedLines}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-xs">
+                        <span className="font-bold text-gray-500">
+                          Quantité totale détectée :
+                        </span>
+                        <span className="font-black text-gray-800">
+                          {receiptStats.detectedQty}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-xs">
+                        <span className="font-bold text-gray-500">
+                          Nombre indiqué sur le ticket :
+                        </span>
+                        <span className="font-black text-gray-800">
+                          {receiptStats.ticketQty !== null
+                            ? receiptStats.ticketQty
+                            : "Non trouvé"}
+                        </span>
+                      </div>
+
+                      {receiptStats.ticketQty !== null && (
+                        <div
+                          className={`mt-2 text-[10px] font-black uppercase ${
+                            receiptStats.detectedQty === receiptStats.ticketQty
+                              ? "text-green-600"
+                              : "text-orange-500"
+                          }`}
+                        >
+                          {receiptStats.detectedQty === receiptStats.ticketQty
+                            ? "✔ Le compte semble bon"
+                            : `⚠ Écart détecté : ${receiptStats.ticketQty - receiptStats.detectedQty}`}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {receiptItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-3"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-black text-xs uppercase text-gray-700 w-2/3 leading-tight">
+                          {item.nom}
+                        </span>
+                        {item.typeStock === "unite" && (
+                          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                            <button
+                              onClick={() => {
+                                const n = [...receiptItems];
+                                n[idx].qte = Math.max(1, n[idx].qte - 1);
+                                setReceiptItems(n);
+                              }}
+                              className="w-6 h-6 bg-white rounded font-bold"
+                            >
+                              -
+                            </button>
+                            <span className="px-2 font-black text-xs">
+                              x{item.qte}
+                            </span>
+                            <button
+                              onClick={() => {
+                                const n = [...receiptItems];
+                                n[idx].qte += 1;
+                                setReceiptItems(n);
+                              }}
+                              className="w-6 h-6 bg-white rounded font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+                        <button
+                          onClick={() => {
+                            const n = [...receiptItems];
+                            n[idx].typeStock = "unite";
+                            setReceiptItems(n);
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === "unite" ? "bg-white shadow-sm" : "text-gray-400"}`}
+                        >
+                          Unités
+                        </button>
+                        <button
+                          onClick={() => {
+                            const n = [...receiptItems];
+                            n[idx].typeStock = "pourcent";
+                            setReceiptItems(n);
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase ${item.typeStock === "pourcent" ? "bg-white shadow-sm" : "text-gray-400"}`}
+                        >
+                          %
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+                          value={item.zone}
+                          onChange={(e) => {
+                            const n = [...receiptItems];
+                            n[idx].zone = e.target.value;
+                            n[idx].rayon =
+                              STRUCTURE[e.target.value].rayons[0].id;
+
+                            if (
+                              n[idx].zone === "Alimentaire" &&
+                              n[idx].rayon === "Fruits et Légumes"
+                            ) {
+                              const result = getEstimatedDateFromProduce(
+                                n[idx].nom,
+                                1,
+                              );
+                              n[idx].maturite = result.maturite;
+                              n[idx].dlc = result.date;
+                            } else {
+                              n[idx].maturite = "";
+                              n[idx].dlc = "";
+                            }
+
+                            setReceiptItems(n);
+                          }}
+                        >
+                          {Object.keys(STRUCTURE).map((z) => (
+                            <option key={z} value={z}>
+                              {z}
+                            </option>
+                          ))}
+                        </select>
+
+                        <select
+                          className="p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+                          value={item.rayon}
+                          onChange={(e) => {
+                            const n = [...receiptItems];
+                            n[idx].rayon = e.target.value;
+
+                            if (e.target.value !== "Fruits et Légumes") {
+                              n[idx].maturite = "";
+                              n[idx].dlc = "";
+                            } else {
+                              const result = getEstimatedDateFromProduce(
+                                n[idx].nom,
+                                1,
+                              );
+                              n[idx].maturite = result.maturite;
+                              n[idx].dlc = result.date;
+                            }
+
+                            setReceiptItems(n);
+                          }}
+                        >
+                          {STRUCTURE[item.zone].rayons.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {item.zone === "Alimentaire" &&
+                      item.rayon === "Fruits et Légumes" ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-1">
+                            {["Pas mûr", "Bientôt", "Mûr"].map(
+                              (label, maturityIdx) => {
+                                const trueLabel =
+                                  maturityIdx === 0
+                                    ? "Pas mûr"
+                                    : maturityIdx === 1
+                                      ? "Bientôt mûr"
+                                      : "Mûr";
+
+                                return (
+                                  <button
+                                    key={label}
+                                    type="button"
+                                    onClick={() => {
+                                      const n = [...receiptItems];
+                                      const result =
+                                        getEstimatedDateFromProduce(
+                                          n[idx].nom,
+                                          maturityIdx,
+                                        );
+                                      n[idx].maturite = result.maturite;
+                                      n[idx].dlc = result.date;
+                                      setReceiptItems(n);
+                                    }}
+                                    className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all border ${
+                                      item.maturite === trueLabel
+                                        ? "bg-orange-500 border-orange-600 text-white"
+                                        : "bg-gray-50 border-transparent text-gray-400"
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <input
+                              type="date"
+                              className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+                              value={item.dlc}
+                              onChange={(e) => {
+                                const n = [...receiptItems];
+                                n[idx].dlc = e.target.value;
+                                setReceiptItems(n);
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                const n = [...receiptItems];
+                                n[idx].congele = !n[idx].congele;
+                                setReceiptItems(n);
+                              }}
+                              className={`p-2 rounded-xl text-lg ${item.congele ? "bg-blue-500 text-white shadow-inner" : "bg-gray-100"}`}
+                            >
+                              ❄️
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="date"
+                            className="flex-1 p-2 bg-gray-50 rounded-xl text-[9px] font-bold outline-none"
+                            value={item.dlc}
+                            onChange={(e) => {
+                              const n = [...receiptItems];
+                              n[idx].dlc = e.target.value;
+                              setReceiptItems(n);
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              const n = [...receiptItems];
+                              n[idx].congele = !n[idx].congele;
+                              setReceiptItems(n);
+                            }}
+                            className={`p-2 rounded-xl text-lg ${item.congele ? "bg-blue-500 text-white shadow-inner" : "bg-gray-100"}`}
+                          >
+                            ❄️
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {receiptItems.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        setLoading(true);
+                        for (const i of receiptItems) {
+                          await syncWithServer({
+                            id: Date.now() + Math.random(),
+                            nom: i.nom,
+                            zone: i.zone,
+                            rayon: i.rayon,
+                            typeStock: i.typeStock,
+                            stock: i.typeStock === "pourcent" ? 100 : i.qte,
+                            date: i.dlc,
+                            congele: i.congele ? 1 : 0,
+                          });
+                        }
+                        window.location.reload();
+                      }}
+                      className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest"
+                    >
+                      Enregistrer au stock 🚀
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* STOCK REPLIABLE */}
+              {view === "home" &&
+                Object.keys(STRUCTURE).map((zone) => {
+                  const zItems = produits.filter(
+                    (p) =>
+                      p.zone === zone &&
+                      Number(p.stock) > 0 &&
+                      p.nom.toLowerCase().includes(searchTerm.toLowerCase()),
+                  );
+                  if (zItems.length === 0) return null;
+                  return (
+                    <div key={zone} className="mb-3">
+                      <button
+                        onClick={() =>
+                          setOpenSections((prev) => ({
+                            ...prev,
+                            [zone]: !prev[zone],
+                          }))
+                        }
+                        className="w-full flex justify-between p-4 bg-white rounded-2xl shadow-sm font-black text-[10px] uppercase text-gray-500 tracking-widest"
+                      >
+                        <span>
+                          {STRUCTURE[zone].icon} {zone}
+                        </span>
+                        <span className="opacity-30">
+                          {openSections[zone] ? "▲" : "▼"}
+                        </span>
+                      </button>
+                      {openSections[zone] &&
+                        STRUCTURE[zone].rayons.map((ray) => {
+                          const rItems = zItems.filter(
+                            (p) => p.rayon === ray.id,
+                          );
+                          if (rItems.length === 0) return null;
+                          return (
+                            <div
+                              key={ray.id}
+                              className="ml-4 mt-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-2 animate-up"
+                            >
+                              <button
+                                onClick={() =>
+                                  setOpenSections((prev) => ({
+                                    ...prev,
+                                    [ray.id]: !prev[ray.id],
+                                  }))
+                                }
+                                className="w-full p-3 px-5 bg-gray-50/50 flex justify-between text-[9px] font-black uppercase text-gray-400"
+                              >
+                                <span>
+                                  {ray.icon} {ray.id}
+                                </span>
+                                <span>
+                                  {rItems.length}{" "}
+                                  {openSections[ray.id] ? "▲" : "▼"}
+                                </span>
+                              </button>
+                              {openSections[ray.id] &&
+                                rItems.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="p-4 flex justify-between items-center border-t border-gray-50"
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">
+                                        {p.nom}
+                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`text-[9px] italic font-bold uppercase tracking-tighter px-2 py-0.5 rounded ${
+                                            getDlcStatus(p.date) === "expired"
+                                              ? "bg-red-100 text-red-600"
+                                              : getDlcStatus(p.date) ===
+                                                  "warning"
+                                                ? "bg-orange-100 text-orange-600"
+                                                : "text-gray-400"
+                                          }`}
+                                        >
+                                          {formatDateFR(p.date)}
+                                        </span>
+                                        {p.maturite && (
+                                          <span className="text-[8px] px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-black uppercase">
+                                            {p.maturite}
+                                          </span>
+                                        )}
+
+                                        {p.note && (
+                                          <span className="text-[8px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-black uppercase">
+                                            {p.note}
+                                          </span>
+                                        )}
+                                        {p.congele == 1 && (
+                                          <span className="text-[9px]">❄️</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-[10px] font-black bg-gray-100 px-2 py-1 rounded-lg">
+                                        {p.typeStock === "pourcent"
+                                          ? p.stock + "%"
+                                          : "x" + p.stock}
+                                      </span>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => {
+                                            const u = {
+                                              ...p,
+                                              congele: p.congele == 1 ? 0 : 1,
+                                            };
+                                            setProduits(
+                                              produits.map((i) =>
+                                                i.id === p.id ? u : i,
+                                              ),
+                                            );
+                                            syncWithServer(u);
+                                          }}
+                                          className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${p.congele == 1 ? "bg-blue-500 text-white shadow-inner" : "bg-white text-gray-200 border-gray-100"}`}
+                                        >
+                                          ❄️
+                                        </button>
+                                        <button
+                                          onClick={() => updateStock(p.id, -1)}
+                                          className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                                        >
+                                          -
+                                        </button>
+                                        <button
+                                          onClick={() => updateStock(p.id, 1)}
+                                          className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  );
+                })}
+
+              {/* COURSES */}
+              {view === "shopping" && (
+                <>
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowSeasonModal(true)}
+                      className="w-full bg-white border border-gray-100 rounded-2xl p-4 font-black uppercase text-[10px] shadow-sm"
+                    >
+                      🥕 Voir les fruits et légumes de saison
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
+                    {produits.filter((p) => Number(p.stock) === 0).length ===
+                    0 ? (
+                      <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-20 font-black">
+                        Liste vide
+                      </p>
+                    ) : (
+                      produits
+                        .filter((p) => Number(p.stock) === 0)
+                        .map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between p-5 px-6 active:bg-gray-50"
+                          >
+                            <div className="flex items-center gap-4">
+                              <input
+                                type="checkbox"
+                                className="w-6 h-6 accent-green-600 rounded-lg shadow-sm"
+                              />
+                              <div>
+                                <p className="font-bold text-sm text-gray-700 uppercase leading-none">
+                                  {p.nom}
+                                </p>
+                                <p className="text-[8px] font-black uppercase text-gray-300 mt-1">
+                                  {p.rayon}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                fetch(
+                                  `${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`,
+                                );
+                                setProduits(
+                                  produits.filter((i) => i.id !== p.id),
+                                );
+                              }}
+                              className="text-gray-200 p-2 text-lg"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </>
+              )}
+            </main>
+
+            {/* MODALE AJOUT MANUEL */}
+            {showAddModal && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[60] p-4">
+                <div className="bg-white w-full rounded-[2.5rem] p-8 max-w-sm mx-auto animate-up shadow-2xl">
+                  <h2 className="text-center font-black mb-6 uppercase text-gray-300 text-[10px] tracking-widest italic">
+                    Nouveau Produit
+                  </h2>
+                  <input
+                    type="text"
+                    placeholder="NOM DU PRODUIT..."
+                    className="w-full p-4 bg-gray-50 rounded-2xl mb-4 font-bold text-sm outline-none border-none focus:ring-2 focus:ring-green-500 shadow-inner"
+                    value={form.nom}
+                    onChange={(e) =>
+                      setForm({ ...form, nom: e.target.value.toUpperCase() })
+                    }
+                  />
+                  <div className="flex gap-2 mb-4 bg-gray-100 p-1.5 rounded-2xl shadow-inner">
+                    <button
+                      onClick={() => setForm({ ...form, typeStock: "unite" })}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === "unite" ? "bg-white shadow-md text-black" : "text-gray-300"}`}
+                    >
+                      Unités
+                    </button>
+                    <button
+                      onClick={() =>
+                        setForm({ ...form, typeStock: "pourcent" })
+                      }
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${form.typeStock === "pourcent" ? "bg-white shadow-md text-black" : "text-gray-400"}`}
+                    >
+                      Pourcent %
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <select
+                      className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                      value={form.zone}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          zone: e.target.value,
+                          rayon: STRUCTURE[e.target.value].rayons[0].id,
+                          ...(STRUCTURE[e.target.value].rayons[0].id !==
+                          "Fruits et Légumes"
+                            ? { maturite: "", date: "" }
+                            : {}),
+                        })
+                      }
+                    >
+                      {Object.keys(STRUCTURE).map((z) => (
+                        <option key={z} value={z}>
+                          {z}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                      value={form.rayon}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          rayon: e.target.value,
+                          ...(e.target.value !== "Fruits et Légumes"
+                            ? { maturite: "", date: "" }
+                            : {}),
+                        })
+                      }
+                    >
+                      {STRUCTURE[form.zone].rayons.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.id}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="mb-6 space-y-3">
+                    {form.rayon === "Fruits et Légumes" ? (
+                      <div className="space-y-3">
+                        <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
+                          État de maturité :
+                        </p>
+
+                        <div className="flex gap-1">
+                          {["Pas mûr", "Bientôt", "Mûr"].map((label, idx) => {
+                            const trueLabel =
+                              idx === 0
+                                ? "Pas mûr"
+                                : idx === 1
+                                  ? "Bientôt mûr"
+                                  : "Mûr";
+
+                            return (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => handleMaturity(form.nom, idx)}
+                                className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase transition-all border-2 ${
+                                  form.maturite === trueLabel
+                                    ? "bg-orange-500 border-orange-600 text-white shadow-lg"
+                                    : "bg-gray-50 border-transparent text-gray-400"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <input
+                          type="date"
+                          className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                          value={form.date}
+                          onChange={(e) =>
+                            setForm({ ...form, date: e.target.value })
+                          }
+                        />
+
+                        {form.date && (
+                          <p className="text-center text-[9px] font-bold text-orange-600 uppercase">
+                            Prévu jusqu’au :{" "}
+                            {form.date.split("-").reverse().join("/")}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-[8px] font-black text-gray-400 uppercase ml-1">
+                          Date de péremption :
+                        </p>
+                        <input
+                          type="date"
+                          className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                          value={form.date}
+                          onChange={(e) =>
+                            setForm({ ...form, date: e.target.value })
+                          }
+                        />
+                      </div>
+                    )}
+
+                    <input
+                      type="number"
+                      placeholder="QTÉ"
+                      className="w-full p-3 bg-white border border-gray-100 rounded-xl text-[9px] font-bold outline-none"
+                      value={form.stock}
+                      onChange={(e) =>
+                        setForm({ ...form, stock: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-3 mb-8">
+                    <label className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={form.congele}
+                        onChange={(e) =>
+                          setForm({ ...form, congele: e.target.checked })
+                        }
+                        className="w-6 h-6 accent-blue-500 rounded-lg shadow-sm"
+                      />
+                      <span className="text-[10px] font-black text-blue-800 uppercase italic">
+                        Placé au congélateur ❄️
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-3 p-4 bg-red-50/50 rounded-2xl cursor-pointer active:scale-95 transition-all">
+                      <input
+                        type="checkbox"
+                        checked={form.directShopping}
+                        onChange={(e) =>
+                          setForm({ ...form, directShopping: e.target.checked })
+                        }
+                        className="w-6 h-6 accent-red-500 rounded-lg shadow-sm"
+                      />
+                      <span className="text-[10px] font-black text-red-700 uppercase italic">
+                        Ajouter directement aux courses 🛒
+                      </span>
+                    </label>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={async () => {
+                        const n = {
+                          ...form,
+                          id: Date.now(),
+                          stock: form.directShopping ? 0 : Number(form.stock),
+                          congele: form.congele ? 1 : 0,
+                          checked: 0,
+                        };
+                        setProduits([n, ...produits]);
+                        await syncWithServer(n);
+                        setShowAddModal(false);
+                        setForm({
+                          nom: "",
+                          zone: "Alimentaire",
+                          rayon: "Fruits et Légumes",
+                          typeStock: "unite",
+                          stock: 1,
+                          date: "",
+                          maturite: "",
+                          directShopping: false,
+                          congele: false,
+                        });
+                      }}
+                      className="w-full bg-green-600 text-white p-5 rounded-[2.5rem] font-black uppercase text-xs shadow-xl tracking-widest active:scale-95 transition-all"
+                    >
+                      Enregistrer ✅
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setForm({
+                          nom: "",
+                          zone: "Alimentaire",
+                          rayon: "Fruits et Légumes",
+                          typeStock: "unite",
+                          stock: 1,
+                          date: "",
+                          maturite: "",
+                          directShopping: false,
+                          congele: false,
+                        });
+                      }}
+                      className="w-full text-gray-300 text-[10px] font-black uppercase text-center py-2"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MODALE SUPPRESSION DESIGN */}
+            {confirmDelete.show && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[110] p-6 text-center">
+                <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-up border-4 border-green-500">
+                  <div className="text-4xl mb-4">🛒</div>
+                  <h3 className="font-black uppercase text-sm mb-2 text-gray-800">
+                    Stock épuisé !
+                  </h3>
+                  <p className="text-gray-500 text-xs mb-8 leading-relaxed">
+                    Ajouter{" "}
+                    <span className="text-green-600 font-bold">
+                      {confirmDelete.produit?.nom}
+                    </span>{" "}
+                    à votre liste de courses ?
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => {
+                        const p = confirmDelete.produit;
+                        const u = { ...p, stock: 0 };
+                        setProduits(
+                          produits.map((i) => (i.id === p.id ? u : i)),
+                        );
+                        syncWithServer(u);
+                        setConfirmDelete({ show: false, produit: null });
+                      }}
+                      className="w-full bg-green-600 text-white p-4 rounded-2xl font-black uppercase text-[10px] shadow-lg active:scale-95 transition-all"
+                    >
+                      Oui, mettre en courses
+                    </button>
+                    <button
+                      onClick={() => {
+                        const p = confirmDelete.produit;
+                        fetch(
+                          `${API_URL}?action=delete_product&id=${p.id}&user=${currentUser}`,
+                        );
+                        setProduits(produits.filter((i) => i.id !== p.id));
+                        setConfirmDelete({ show: false, produit: null });
+                      }}
+                      className="w-full bg-gray-100 text-gray-400 p-4 rounded-2xl font-black uppercase text-[10px] active:scale-95 transition-all"
+                    >
+                      Non, supprimer
+                    </button>
+                    <button
+                      onClick={() =>
+                        setConfirmDelete({ show: false, produit: null })
+                      }
+                      className="text-[9px] font-black text-gray-300 uppercase mt-2"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showSeasonModal && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end z-[80] p-4">
+                <div className="bg-white w-full rounded-[2.5rem] p-6 max-w-sm mx-auto animate-up shadow-2xl">
+                  <h2 className="text-center font-black mb-6 uppercase text-gray-400 text-[10px] tracking-widest italic">
+                    Produits de saison
+                  </h2>
+
+                  <div className="space-y-5">
+                    <div>
+                      <h3 className="font-black text-[10px] uppercase text-orange-500 mb-2">
+                        Fruits
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {getCurrentMonthSeason().fruits.map((item) => (
+                          <button
+                            key={item}
+                            onClick={async () => {
+                              if (
+                                produits.some(
+                                  (p) =>
+                                    p.nom === item && Number(p.stock) === 0,
+                                )
+                              )
+                                return;
+
+                              const result = getEstimatedDateFromProduce(
+                                item,
+                                1,
+                              );
+
+                              const n = {
+                                id: Date.now() + Math.random(),
+                                nom: item,
+                                zone: "Alimentaire",
+                                rayon: "Fruits et Légumes",
+                                typeStock: "unite",
+                                stock: 0,
+                                date: result.date,
+                                maturite: result.maturite,
+                                note: "Produit de saison",
+                                congele: 0,
+                              };
+
+                              setProduits((prev) => [n, ...prev]);
+                              await syncWithServer(n);
+                            }}
+                            className="px-3 py-2 bg-orange-50 text-orange-600 rounded-xl text-[9px] font-black uppercase"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-black text-[10px] uppercase text-green-600 mb-2">
+                        Légumes
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {getCurrentMonthSeason().legumes.map((item) => (
+                          <button
+                            key={item}
+                            onClick={async () => {
+                              if (
+                                produits.some(
+                                  (p) =>
+                                    p.nom === item && Number(p.stock) === 0,
+                                )
+                              )
+                                return;
+
+                              const result = getEstimatedDateFromProduce(
+                                item,
+                                1,
+                              );
+
+                              const n = {
+                                id: Date.now() + Math.random(),
+                                nom: item,
+                                zone: "Alimentaire",
+                                rayon: "Fruits et Légumes",
+                                typeStock: "unite",
+                                stock: 0,
+                                date: result.date,
+                                maturite: result.maturite,
+                                note: "Produit de saison",
+                                congele: 0,
+                              };
+
+                              setProduits((prev) => [n, ...prev]);
+                              await syncWithServer(n);
+                            }}
+                            className="px-3 py-2 bg-green-50 text-green-600 rounded-xl text-[9px] font-black uppercase"
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowSeasonModal(false)}
+                    className="w-full mt-6 bg-black text-white p-4 rounded-2xl font-black uppercase text-[10px]"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
+              <button
+                onClick={() => setView("home")}
+                className={`p-4 transition-all duration-300 ${view === "home" ? "text-green-600 scale-125" : "text-gray-200"}`}
+              >
+                🏠
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter"
+              >
+                ＋
+              </button>
+              <button
+                onClick={() => setView("shopping")}
+                className={`p-4 transition-all duration-300 ${view === "shopping" ? "text-green-600 scale-125" : "text-gray-200"}`}
+              >
+                🛒
+              </button>
+            </nav>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
     </script>
-</body>
+  </body>
 </html>
