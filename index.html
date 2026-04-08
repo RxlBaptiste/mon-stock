@@ -51,6 +51,22 @@
             ]}
         };
 
+        const FRUITS_ET_LEGUMES = [
+    "POMME", "POIRE", "BANANE", "ORANGE", "CITRON", "KIWI",
+    "FRAISE", "FRAMBOISE", "MURE", "MYRTILLE", "CERISE",
+    "RAISIN", "PRUNE", "PECHE", "NECTARINE", "ABRICOT",
+    "ANANAS", "MANGUE", "PAPAYE", "AVOCAT", "GRENADE",
+    "FIGUE", "KAKI", "LITCHI",
+
+    "CAROTTE", "POIREAU", "POMME DE TERRE", "OIGNON", "AIL",
+    "CHOU", "CHOU-FLEUR", "BROCOLI", "ENDIVE", "EPINARD",
+    "CONCOMBRE", "COURGETTE", "AUBERGINE", "POIVRON",
+    "HARICOT", "PETIT POIS", "NAVET", "PANAIS",
+    "BETTERAVE", "CELERI", "FENOUIL", "RADIS",
+    "SALADE", "LAITUE", "MACHE", "ROQUETTE",
+    "COURGE", "POTIRON", "POTIMARRON"
+];
+        
         const AUTO_MAPPING = {
             "YAOURT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
             "LAIT": { zone: "Alimentaire", rayon: "Produits Laitiers" },
@@ -136,18 +152,37 @@
                 catch (err) { console.error(err); }
             };
 
+            const detectRayon = (nom) => {
+    const upper = nom.toUpperCase();
+
+    if (FRUITS_ET_LEGUMES.some(item => upper.includes(item))) {
+        return {
+            zone: "Alimentaire",
+            rayon: "Fruits et Légumes"
+        };
+    }
+
+    return null;
+};
             const detectCategory = (nom) => {
     const n = nom.toUpperCase();
 
+    // 1. Priorité au mapping manuel
     for (const [k, v] of Object.entries(AUTO_MAPPING)) {
         if (n.includes(k)) return v;
     }
 
+    // 2. Détection large fruits et légumes
+    const rayonDetecte = detectRayon(nom);
+    if (rayonDetecte) return rayonDetecte;
+
+    // 3. Détection via durée de vie connue
     const produceMatch = getProduceBaseLife(nom);
     if (produceMatch.label) {
         return { zone: "Alimentaire", rayon: "Fruits et Légumes" };
     }
 
+    // 4. Produit déjà connu dans ton stock
     const ex = produits.find(p => p.nom.toUpperCase() === n);
     return ex
         ? { zone: ex.zone, rayon: ex.rayon }
@@ -273,52 +308,204 @@ const handleMaturity = (nom, etatIndex) => {
 };
             const SEASONAL_PRODUCE = {
     1: {
-        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CITRON", "CLEMENTINE"],
-        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "POMME DE TERRE", "OIGNON"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
+            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KIWI",
+            "LITCHI", "MANDARINE", "MANGUE", "NOIX DE COCO",
+            "ORANGE", "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
+        ],
+        legumes: [
+            "BETTERAVE", "BROCOLI", "CAROTTE", "CELERI BRANCHE",
+            "CELERI-RAVE", "CHOU", "CHOU-FLEUR", "CHOUX DE BRUXELLES",
+            "COURGE", "ENDIVE", "EPINARD", "FENOUIL", "MACHE",
+            "NAVET", "OIGNON", "PANAIS", "PATATE DOUCE",
+            "POIREAU", "POMME DE TERRE", "RUTABAGA", "SALSIFIS",
+            "TOPINAMBOUR", "TRUFFE"
+        ]
     },
+
     2: {
-        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CITRON"],
-        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "CELERI", "OIGNON"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
+            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KIWI",
+            "LITCHI", "MANDARINE", "MANGUE", "NOIX DE COCO",
+            "ORANGE", "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
+        ],
+        legumes: [
+            "BETTERAVE", "BROCOLI", "CAROTTE", "CELERI BRANCHE",
+            "CELERI-RAVE", "CHOU", "CHOU-FLEUR", "CHOUX DE BRUXELLES",
+            "COURGE", "ENDIVE", "EPINARD", "FENOUIL", "MACHE",
+            "NAVET", "OIGNON", "PANAIS", "PATATE DOUCE",
+            "POIREAU", "POMME DE TERRE", "RUTABAGA", "SALSIFIS",
+            "TOPINAMBOUR", "TRUFFE"
+        ]
     },
+
     3: {
-        fruits: ["POMME", "POIRE", "KIWI", "CITRON"],
-        legumes: ["POIREAU", "CAROTTE", "EPINARD", "CHOU-FLEUR", "RADIS", "ASPERGE"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "FRAISE",
+            "KIWI", "MANGUE", "NOIX DE COCO", "ORANGE",
+            "PAMPLEMOUSSE", "PHYSALIS", "POIRE", "POMME"
+        ],
+        legumes: [
+            "ARTICHAUT", "ASPERGE", "BETTERAVE", "BROCOLI",
+            "CAROTTE", "CELERI BRANCHE", "CELERI-RAVE", "CHOU",
+            "CHOU-FLEUR", "EPINARD", "FENOUIL", "MACHE",
+            "NAVET", "OIGNON", "PANAIS", "POIREAU",
+            "POMME DE TERRE", "RADIS", "RUTABAGA",
+            "TOPINAMBOUR"
+        ]
     },
+
     4: {
-        fruits: ["POMME", "KIWI", "FRAISE", "CITRON"],
-        legumes: ["ASPERGE", "RADIS", "CAROTTE", "EPINARD", "SALADE", "POIREAU"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "FRAISE",
+            "KIWI", "MANGUE", "NOIX DE COCO", "ORANGE",
+            "PAMPLEMOUSSE", "POMME", "RHUBARBE"
+        ],
+        legumes: [
+            "ARTICHAUT", "ASPERGE", "BETTERAVE", "CAROTTE",
+            "CHOU-FLEUR", "CONCOMBRE", "EPINARD", "FENOUIL",
+            "LAITUE", "MACHE", "NAVET", "OIGNON", "PETIT POIS",
+            "POIREAU", "POMME DE TERRE", "RADIS", "ROQUETTE",
+            "SALADE"
+        ]
     },
+
     5: {
-        fruits: ["FRAISE", "CERISE", "RHUBARBE"],
-        legumes: ["ASPERGE", "RADIS", "SALADE", "COURGETTE", "CONCOMBRE", "EPINARD"]
+        fruits: [
+            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CERISE",
+            "CITRON", "FRAISE", "FRAMBOISE", "KIWI", "MANGUE",
+            "MELON", "ORANGE", "PAMPLEMOUSSE", "RHUBARBE",
+            "TOMATE"
+        ],
+        legumes: [
+            "ARTICHAUT", "ASPERGE", "AUBERGINE", "BETTERAVE",
+            "BROCOLI", "CAROTTE", "CHOU-FLEUR", "CONCOMBRE",
+            "COURGETTE", "EPINARD", "FENOUIL", "HARICOT VERT",
+            "LAITUE", "NAVET", "OIGNON", "PETIT POIS",
+            "POIVRON", "POMME DE TERRE", "RADIS", "ROQUETTE",
+            "SALADE", "TOMATE"
+        ]
     },
+
     6: {
-        fruits: ["FRAISE", "CERISE", "ABRICOT", "FRAMBOISE", "MELON"],
-        legumes: ["COURGETTE", "TOMATE", "CONCOMBRE", "AUBERGINE", "HARICOT VERT", "POIVRON"]
+        fruits: [
+            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CERISE",
+            "CITRON", "FRAISE", "FRAMBOISE", "GROSEILLE",
+            "MELON", "MYRTILLE", "NECTARINE", "PASTEQUE",
+            "PECHE", "PRUNE", "RHUBARBE", "TOMATE"
+        ],
+        legumes: [
+            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
+            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
+            "FENOUIL", "HARICOT VERT", "LAITUE", "OIGNON",
+            "PETIT POIS", "POIVRON", "POMME DE TERRE",
+            "RADIS", "ROQUETTE", "SALADE", "TOMATE"
+        ]
     },
+
     7: {
-        fruits: ["ABRICOT", "PECHE", "NECTARINE", "FRAMBOISE", "MELON", "PASTEQUE"],
-        legumes: ["TOMATE", "COURGETTE", "AUBERGINE", "CONCOMBRE", "POIVRON", "HARICOT VERT"]
+        fruits: [
+            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CASSIS",
+            "CERISE", "FIGUE", "FRAISE", "FRAMBOISE", "GROSEILLE",
+            "MELON", "MIRABELLE", "MURE", "MYRTILLE", "NECTARINE",
+            "PASTEQUE", "PECHE", "PRUNE", "RAISIN", "TOMATE"
+        ],
+        legumes: [
+            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
+            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
+            "FENOUIL", "HARICOT VERT", "LAITUE", "OIGNON",
+            "POIVRON", "POMME DE TERRE", "RADIS", "ROQUETTE",
+            "SALADE", "TOMATE"
+        ]
     },
+
     8: {
-        fruits: ["PECHE", "NECTARINE", "PRUNE", "FIGUE", "MELON", "RAISIN"],
-        legumes: ["TOMATE", "COURGETTE", "AUBERGINE", "POIVRON", "CONCOMBRE", "HARICOT VERT"]
+        fruits: [
+            "ABRICOT", "ANANAS", "AVOCAT", "BANANE", "CASSIS",
+            "FIGUE", "FRAMBOISE", "GROSEILLE", "MELON",
+            "MIRABELLE", "MURE", "MYRTILLE", "NECTARINE",
+            "PASTEQUE", "PECHE", "POIRE", "PRUNE", "RAISIN",
+            "TOMATE"
+        ],
+        legumes: [
+            "AUBERGINE", "BETTERAVE", "BROCOLI", "CAROTTE",
+            "CHOU-FLEUR", "CONCOMBRE", "COURGETTE", "EPINARD",
+            "FENOUIL", "HARICOT VERT", "LAITUE", "MAIS",
+            "OIGNON", "POIVRON", "POMME DE TERRE", "RADIS",
+            "ROQUETTE", "SALADE", "TOMATE"
+        ]
     },
+
     9: {
-        fruits: ["PRUNE", "FIGUE", "RAISIN", "POIRE", "POMME"],
-        legumes: ["TOMATE", "COURGETTE", "POTIRON", "BROCOLI", "CHAMPIGNON", "POIREAU"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CASSIS", "FIGUE",
+            "FRAMBOISE", "GROSEILLE", "MELON", "MIRABELLE",
+            "MURE", "MYRTILLE", "POIRE", "POMME", "PRUNE",
+            "RAISIN", "TOMATE"
+        ],
+        legumes: [
+            "ARTICHAUT", "AUBERGINE", "BETTERAVE", "BROCOLI",
+            "CAROTTE", "CELERI BRANCHE", "CHOU-FLEUR",
+            "CHOUX DE BRUXELLES", "CONCOMBRE", "COURGETTE",
+            "EPINARD", "FENOUIL", "HARICOT VERT", "MAIS",
+            "POIREAU", "POIVRON", "POMME DE TERRE",
+            "POTIMARRON", "POTIRON", "RADIS", "TOMATE",
+            "TRUFFE"
+        ]
     },
+
     10: {
-        fruits: ["POMME", "POIRE", "RAISIN", "FIGUE", "KIWI"],
-        legumes: ["POTIRON", "CAROTTE", "POIREAU", "CHOU-FLEUR", "BROCOLI", "CHAMPIGNON"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "COING", "DATTE",
+            "FIGUE", "FRUIT DE LA PASSION", "KAKI", "MANGUE",
+            "MURE", "PAPAYE", "POIRE", "POMME", "PRUNE",
+            "RAISIN"
+        ],
+        legumes: [
+            "BETTERAVE", "BROCOLI", "CAROTTE", "CHOU",
+            "CHOU-FLEUR", "CHOUX DE BRUXELLES", "CONCOMBRE",
+            "COURGE", "COURGETTE", "CELERI BRANCHE",
+            "CELERI-RAVE", "ENDIVE", "EPINARD", "FENOUIL",
+            "NAVET", "PANAIS", "PATATE DOUCE", "POIREAU",
+            "POMME DE TERRE", "RUTABAGA", "TRUFFE"
+        ]
     },
+
     11: {
-        fruits: ["POMME", "POIRE", "KIWI", "CLEMENTINE", "ORANGE"],
-        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "CHAMPIGNON", "CELERI"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
+            "DATTE", "FRUIT DE LA PASSION", "GRENADE", "KAKI",
+            "KIWI", "LITCHI", "NOIX DE COCO", "PHYSALIS",
+            "POIRE", "POMME"
+        ],
+        legumes: [
+            "BETTERAVE", "BROCOLI", "CAROTTE", "CHOU",
+            "CHOU-FLEUR", "CHOUX DE BRUXELLES", "COURGE",
+            "CONCOMBRE", "CELERI BRANCHE", "CELERI-RAVE",
+            "ENDIVE", "EPINARD", "FENOUIL", "LENTILLE",
+            "NAVET", "PANAIS", "PATATE DOUCE", "POIREAU",
+            "POMME DE TERRE", "RUTABAGA", "TOPINAMBOUR",
+            "TRUFFE"
+        ]
     },
+
     12: {
-        fruits: ["POMME", "POIRE", "KIWI", "ORANGE", "CLEMENTINE", "CITRON"],
-        legumes: ["CAROTTE", "POIREAU", "CHOU", "ENDIVE", "POMME DE TERRE", "OIGNON"]
+        fruits: [
+            "ANANAS", "AVOCAT", "BANANE", "CITRON", "CLEMENTINE",
+            "DATTE", "FRUIT DE LA PASSION", "GOYAVE", "GRENADE",
+            "KAKI", "KIWI", "LITCHI", "MANGUE", "NOIX DE COCO",
+            "ORANGE", "PAPAYE", "PHYSALIS", "POMME"
+        ],
+        legumes: [
+            "BETTERAVE", "CAROTTE", "CHOU", "CHOU-FLEUR",
+            "CHOUX DE BRUXELLES", "COURGE", "CELERI BRANCHE",
+            "CELERI-RAVE", "ENDIVE", "EPINARD", "FENOUIL",
+            "LENTILLE", "NAVET", "PANAIS", "PATATE DOUCE",
+            "POIREAU", "POMME DE TERRE", "RUTABAGA",
+            "TOPINAMBOUR", "TRUFFE"
+        ]
     }
 };
 
