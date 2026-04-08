@@ -58,6 +58,22 @@
             "BEURRE": { zone: "Alimentaire", rayon: "Produits Laitiers" },
             "POMME": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
             "BANANE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+            "CAROTTE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"POIREAU": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"TOMATE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"COURGETTE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"CONCOMBRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"SALADE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"CHAMPIGNON": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"OIGNON": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"POMME DE TERRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"AVOCAT": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"FRAISE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"FRAMBOISE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"POIRE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"KIWI": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"ORANGE": { zone: "Alimentaire", rayon: "Fruits et Légumes" },
+"CITRON": { zone: "Alimentaire", rayon: "Fruits et Légumes" }
             "POULET": { zone: "Alimentaire", rayon: "Viande" },
             "JAMBON": { zone: "Alimentaire", rayon: "Viande" },
             "PAIN": { zone: "Alimentaire", rayon: "Boulangerie" },
@@ -120,11 +136,22 @@
             };
 
             const detectCategory = (nom) => {
-                const n = nom.toUpperCase();
-                for (const [k, v] of Object.entries(AUTO_MAPPING)) { if (n.includes(k)) return v; }
-                const ex = produits.find(p => p.nom.toUpperCase() === n);
-                return ex ? { zone: ex.zone, rayon: ex.rayon } : { zone: "Alimentaire", rayon: "Autres" };
-            };
+    const n = nom.toUpperCase();
+
+    for (const [k, v] of Object.entries(AUTO_MAPPING)) {
+        if (n.includes(k)) return v;
+    }
+
+    const produceMatch = getProduceBaseLife(nom);
+    if (produceMatch.label) {
+        return { zone: "Alimentaire", rayon: "Fruits et Légumes" };
+    }
+
+    const ex = produits.find(p => p.nom.toUpperCase() === n);
+    return ex
+        ? { zone: ex.zone, rayon: ex.rayon }
+        : { zone: "Alimentaire", rayon: "Autres" };
+};
 
             const PRODUCE_LIFESPAN = {
     "FRAISE": 2,
