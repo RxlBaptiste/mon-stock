@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mon Stockage PRO</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const ProApp = () => {
+        return (
+          <div className="max-w-md mx-auto min-h-screen p-6">
+            <h1 className="text-xl font-black text-purple-600 uppercase mb-4">
+              Mode PRO 👨‍🍳
+            </h1>
+
+            <button
+              onClick={() => (window.location.href = "index.html")}
+              className="mb-6 bg-black text-white px-4 py-2 rounded-xl text-xs font-bold"
+            >
+              ← Retour Perso
+            </button>
+
+            <div className="bg-white p-6 rounded-2xl shadow">
+              <p className="font-bold">📦 Stock PRO (à construire)</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Ici on va gérer le stock du restaurant (kg, prix, etc)
+              </p>
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<ProApp />);
+    </script>
+  </body>
+</html>
