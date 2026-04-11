@@ -10,9 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $host = "localhost";
-$dbname = "NOM_DE_TA_BASE";
-$username = "NOM_UTILISATEUR_BDD";
-$password = "MOT_DE_PASSE_BDD";
+$dbname = "u748897370_mon_stock_db";
+$username = "u748897370_baptisterouxel";
+$password = "B@ptiste_22";
+
 
 try {
     $pdo = new PDO(
