@@ -46,15 +46,6 @@
           note: "",
         });
 
-        React.useEffect(() => {
-          if (isUnlocked) {
-            fetch(`${API_PRO_URL}?action=get_stock_pro`)
-              .then((res) => res.json())
-              .then((data) => setProduits(Array.isArray(data) ? data : []))
-              .catch(() => setProduits([]));
-          }
-        }, [isUnlocked]);
-
         const calculPrixUnitaire = (prixTotal, quantiteInitiale) => {
           const prix = Number(prixTotal);
           const qte = Number(quantiteInitiale);
@@ -366,7 +357,7 @@
             </nav>
           </div>
         );
-      }
+      };
 
       const root = ReactDOM.createRoot(document.getElementById("root"));
       root.render(<AppPro />);
