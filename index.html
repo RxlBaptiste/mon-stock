@@ -76,8 +76,6 @@
       const PASS_SOEUR = "1912";
       const PASS_PERE = "5678";
 
-      const [appMode, setAppMode] = useState("perso");
-
       const STRUCTURE = {
         Alimentaire: {
           icon: "🧺",
@@ -216,6 +214,9 @@
           produit: null,
         });
         const [showSeasonModal, setShowSeasonModal] = useState(false);
+
+        const [appMode, setAppMode] = useState("perso");
+
         const [searchTerm, setSearchTerm] = useState("");
         const [openSections, setOpenSections] = useState({});
         const [form, setForm] = useState({
