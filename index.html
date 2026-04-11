@@ -76,6 +76,8 @@
       const PASS_SOEUR = "1912";
       const PASS_PERE = "5678";
 
+      const [appMode, setAppMode] = useState("perso");
+
       const STRUCTURE = {
         Alimentaire: {
           icon: "🧺",
@@ -1784,7 +1786,22 @@
                 <h1 className="font-black italic text-lg uppercase text-green-600 underline leading-none">
                   MON STOCKAGE
                 </h1>
+
                 <div className="flex gap-2">
+                  {(currentUser === "pere" || currentUser === "baptiste") && (
+                    <button
+                      onClick={() =>
+                        setAppMode(appMode === "perso" ? "pro" : "perso")
+                      }
+                      className={`px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm ${
+                        appMode === "pro"
+                          ? "bg-purple-600 text-white"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      {appMode === "perso" ? "Mode Pro" : "Mode Perso"}
+                    </button>
+                  )}
                   <button
                     onClick={() => setView("receipt")}
                     className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
