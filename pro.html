@@ -47,13 +47,13 @@
         });
 
         React.useEffect(() => {
-          if (isUnlocked) {
+         /* if (isUnlocked) {
             fetch(`${API_PRO_URL}?action=get_stock_pro`)
               .then((res) => res.json())
               .then((data) => setProduits(Array.isArray(data) ? data : []))
               .catch(() => setProduits([]));
           }
-        }, [isUnlocked]);
+        }, [isUnlocked]);*/
 
         const calculPrixUnitaire = (prixTotal, quantiteInitiale) => {
           const prix = Number(prixTotal);
