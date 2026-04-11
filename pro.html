@@ -44,7 +44,7 @@
           fournisseur: "",
           date_achat: "",
           date_peremption: "",
-          note: ""
+          note: "",
         });
 
         React.useEffect(() => {
@@ -68,16 +68,16 @@
           await fetch(`${API_PRO_URL}?action=save_product_pro`, {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify(product)
+            body: JSON.stringify(product),
           });
         };
 
         const handleAddProduct = async () => {
           const prixUnitaire = calculPrixUnitaire(
             form.prix_total_achat,
-            form.quantite_initiale
+            form.quantite_initiale,
           );
 
           const newProduct = {
@@ -93,7 +93,7 @@
             fournisseur: form.fournisseur,
             date_achat: form.date_achat || null,
             date_peremption: form.date_peremption || null,
-            note: form.note
+            note: form.note,
           };
 
           await saveProductPro(newProduct);
@@ -111,7 +111,7 @@
             fournisseur: "",
             date_achat: "",
             date_peremption: "",
-            note: ""
+            note: "",
           });
         };
 
@@ -136,7 +136,7 @@
 
           return {
             quantite: manque,
-            cout
+            cout,
           };
         };
 
@@ -179,8 +179,12 @@
             <header className="bg-slate-800 text-white p-5 sticky top-0 z-20 shadow">
               <div className="flex justify-between items-center">
                 <div>
-                  <h1 className="font-black uppercase text-lg">Mon Stockage Pro</h1>
-                  <p className="text-[10px] uppercase text-slate-300">Mode professionnel</p>
+                  <h1 className="font-black uppercase text-lg">
+                    Mon Stockage Pro
+                  </h1>
+                  <p className="text-[10px] uppercase text-slate-300">
+                    Mode professionnel
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -201,11 +205,18 @@
                   const achat = getAchatConseille(p);
 
                   return (
-                    <div key={p.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+                    <div
+                      key={p.id}
+                      className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100"
+                    >
                       <div className="flex justify-between items-start gap-3">
                         <div>
-                          <h2 className="font-black uppercase text-sm text-slate-800">{p.nom}</h2>
-                          <p className="text-[10px] uppercase text-gray-400">{p.categorie}</p>
+                          <h2 className="font-black uppercase text-sm text-slate-800">
+                            {p.nom}
+                          </h2>
+                          <p className="text-[10px] uppercase text-gray-400">
+                            {p.categorie}
+                          </p>
                         </div>
                         <div className="text-right">
                           <div className="text-[10px] uppercase text-blue-600 font-black">
@@ -219,28 +230,36 @@
 
                       <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                         <div className="bg-gray-50 rounded-2xl p-3">
-                          <div className="text-gray-400 uppercase font-black text-[9px]">Initial</div>
+                          <div className="text-gray-400 uppercase font-black text-[9px]">
+                            Initial
+                          </div>
                           <div className="font-black text-slate-700">
                             {p.quantite_initiale} {p.unite}
                           </div>
                         </div>
 
                         <div className="bg-gray-50 rounded-2xl p-3">
-                          <div className="text-gray-400 uppercase font-black text-[9px]">Restant</div>
+                          <div className="text-gray-400 uppercase font-black text-[9px]">
+                            Restant
+                          </div>
                           <div className="font-black text-slate-700">
                             {p.quantite_restante} {p.unite}
                           </div>
                         </div>
 
                         <div className="bg-gray-50 rounded-2xl p-3">
-                          <div className="text-gray-400 uppercase font-black text-[9px]">Seuil</div>
+                          <div className="text-gray-400 uppercase font-black text-[9px]">
+                            Seuil
+                          </div>
                           <div className="font-black text-slate-700">
                             {p.seuil_alerte} {p.unite}
                           </div>
                         </div>
 
                         <div className="bg-gray-50 rounded-2xl p-3">
-                          <div className="text-gray-400 uppercase font-black text-[9px]">Achat</div>
+                          <div className="text-gray-400 uppercase font-black text-[9px]">
+                            Achat
+                          </div>
                           <div className="font-black text-slate-700">
                             {Number(p.prix_total_achat).toFixed(2)} €
                           </div>
@@ -249,9 +268,12 @@
 
                       {achat && (
                         <div className="mt-3 bg-orange-50 border border-orange-100 rounded-2xl p-3">
-                          <div className="text-[9px] font-black uppercase text-orange-500">À racheter</div>
+                          <div className="text-[9px] font-black uppercase text-orange-500">
+                            À racheter
+                          </div>
                           <div className="text-sm font-black text-orange-700">
-                            {achat.quantite.toFixed(2)} {p.unite} ≈ {achat.cout.toFixed(2)} €
+                            {achat.quantite.toFixed(2)} {p.unite} ≈{" "}
+                            {achat.cout.toFixed(2)} €
                           </div>
                         </div>
                       )}
@@ -301,13 +323,17 @@
                     type="text"
                     placeholder="Catégorie"
                     value={form.categorie}
-                    onChange={(e) => setForm({ ...form, categorie: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, categorie: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
                   <select
                     value={form.unite}
-                    onChange={(e) => setForm({ ...form, unite: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, unite: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   >
                     <option value="unite">unité</option>
@@ -323,7 +349,9 @@
                     step="0.01"
                     placeholder="Quantité initiale"
                     value={form.quantite_initiale}
-                    onChange={(e) => setForm({ ...form, quantite_initiale: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, quantite_initiale: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
@@ -332,7 +360,9 @@
                     step="0.01"
                     placeholder="Quantité restante"
                     value={form.quantite_restante}
-                    onChange={(e) => setForm({ ...form, quantite_restante: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, quantite_restante: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
@@ -341,7 +371,9 @@
                     step="0.01"
                     placeholder="Seuil d'alerte"
                     value={form.seuil_alerte}
-                    onChange={(e) => setForm({ ...form, seuil_alerte: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, seuil_alerte: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
@@ -350,7 +382,9 @@
                     step="0.01"
                     placeholder="Prix total achat (€)"
                     value={form.prix_total_achat}
-                    onChange={(e) => setForm({ ...form, prix_total_achat: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, prix_total_achat: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
@@ -358,21 +392,29 @@
                     type="text"
                     placeholder="Fournisseur"
                     value={form.fournisseur}
-                    onChange={(e) => setForm({ ...form, fournisseur: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, fournisseur: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
                   <input
                     type="date"
+                    placeholder="Date d'achat"
                     value={form.date_achat}
-                    onChange={(e) => setForm({ ...form, date_achat: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, date_achat: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
                   <input
                     type="date"
+                    placeholder="Date de péremption"
                     value={form.date_peremption}
-                    onChange={(e) => setForm({ ...form, date_peremption: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, date_peremption: e.target.value })
+                    }
                     className="w-full p-3 rounded-xl bg-gray-100 outline-none"
                   />
 
