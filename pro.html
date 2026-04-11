@@ -46,6 +46,13 @@
           note: "",
         });
 
+        React.useEffect(() => {
+          fetch(`${API_PRO_URL}?action=get_stock_pro`)
+            .then((res) => res.json())
+            .then((data) => setProduits(Array.isArray(data) ? data : []))
+            .catch(() => setProduits([]));
+        }, []);
+
         const calculPrixUnitaire = (prixTotal, quantiteInitiale) => {
           const prix = Number(prixTotal);
           const qte = Number(quantiteInitiale);
