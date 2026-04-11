@@ -15,6 +15,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+      const PASS_RETOUR_PERSO = "1234";
       const ProApp = () => {
         return (
           <div className="max-w-md mx-auto min-h-screen p-6">
@@ -23,7 +24,14 @@
             </h1>
 
             <button
-              onClick={() => (window.location.href = "index.html")}
+              onClick={() => {
+                const code = prompt("Code pour accéder au mode perso :");
+                if (code === PASS_RETOUR_PERSO) {
+                  window.location.href = "index.html";
+                } else if (code !== null) {
+                  alert("Code incorrect");
+                }
+              }}
               className="mb-6 bg-black text-white px-4 py-2 rounded-xl text-xs font-bold"
             >
               ← Retour Perso
