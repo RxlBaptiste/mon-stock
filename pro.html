@@ -26,10 +26,9 @@
 
     <script type="text/babel">
       const API_PRO_URL = "https://baptisterouxel.fr/stock/stock_pro_api.php";
-      const PASS_PRO = "1234"; // change-le après
 
       const AppPro = () => {
-        const [isUnlocked, setIsUnlocked] = React.useState(false);
+        const PASS_RETOUR_PERSO = "1234";
         const [produits, setProduits] = React.useState([]);
         const [showAddModal, setShowAddModal] = React.useState(false);
 
@@ -140,44 +139,10 @@
           };
         };
 
-        if (!isUnlocked) {
-          return (
-            <div className="min-h-screen bg-slate-800 flex items-center justify-center p-6">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
-                <h1 className="text-center font-black uppercase mb-6 text-slate-700">
-                  Mode Pro
-                </h1>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const code = e.target.code.value;
-                    if (code === PASS_PRO) {
-                      setIsUnlocked(true);
-                    } else {
-                      alert("Code incorrect");
-                    }
-                  }}
-                  className="space-y-4"
-                >
-                  <input
-                    name="code"
-                    type="password"
-                    placeholder="Code d'accès"
-                    className="w-full p-4 rounded-2xl bg-gray-100 outline-none"
-                  />
-                  <button className="w-full bg-slate-800 text-white p-4 rounded-2xl font-black uppercase">
-                    Entrer
-                  </button>
-                </form>
-              </div>
-            </div>
-          );
-        }
-
         return (
           <div className="max-w-md mx-auto min-h-screen pb-24 bg-gray-100">
             <header className="bg-slate-800 text-white p-5 sticky top-0 z-20 shadow">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <div>
                   <h1 className="font-black uppercase text-lg">
                     Mon Stockage Pro
@@ -186,12 +151,29 @@
                     Mode professionnel
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="bg-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase"
-                >
-                  + Produit
-                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const code = prompt("Code pour revenir au mode perso");
+                      if (code === PASS_RETOUR_PERSO) {
+                        window.location.href = "index.html";
+                      } else if (code !== null) {
+                        alert("Code incorrect");
+                      }
+                    }}
+                    className="bg-gray-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase"
+                  >
+                    Mode Perso
+                  </button>
+
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase"
+                  >
+                    + Produit
+                  </button>
+                </div>
               </div>
             </header>
 
