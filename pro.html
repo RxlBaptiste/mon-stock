@@ -19,6 +19,20 @@
         -webkit-tap-highlight-color: transparent;
         background-color: #e5e7eb;
       }
+      @keyframes slideUp {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .animate-up {
+        animation: slideUp 0.3s ease-out;
+      }
     </style>
   </head>
   <body>
@@ -46,6 +60,10 @@
           date_peremption: "",
           note: "",
         });
+
+        const underThresholdCount = produits.filter(
+          (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
+        ).length;
 
         React.useEffect(() => {
           fetch(`${API_PRO_URL}?action=get_stock_pro`)
@@ -348,6 +366,7 @@
               >
                 🏠
               </button>
+
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter"
