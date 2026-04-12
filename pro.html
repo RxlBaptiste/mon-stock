@@ -147,7 +147,7 @@
         const [form, setForm] = React.useState({
           nom: "",
           categorie: "Matières premières",
-          sous_categorie: "Autres",
+          sous_categorie: "Fruits frais",
           unite: "kg",
           type_unite: "poids",
           quantite_initiale: "",
@@ -308,6 +308,11 @@
             type_unite: uniteTrouvee ? uniteTrouvee.type : "quantité",
           }));
         };
+
+        const categoriesPrincipales = Object.keys(STRUCTURE_PRO);
+
+        const sousCategoriesDisponibles =
+          STRUCTURE_PRO[form.categorie]?.categories || [];
 
         return (
           <div className="max-w-md mx-auto min-h-screen pb-32">
