@@ -41,6 +41,103 @@
     <script type="text/babel">
       const API_PRO_URL = "https://baptisterouxel.fr/stock/stock_pro_api.php";
 
+      const STRUCTURE_PRO = {
+        "Matières premières": {
+          icon: "🌾",
+          categories: [
+            { id: "Fruits frais", icon: "🍎" },
+            { id: "Légumes frais", icon: "🥕" },
+            { id: "Viandes", icon: "🥩" },
+            { id: "Poissons", icon: "🐟" },
+            { id: "Produits laitiers", icon: "🥛" },
+            { id: "Épicerie sèche", icon: "🥫" },
+            { id: "Surgelés", icon: "❄️" },
+          ],
+        },
+
+        "Produits transformés": {
+          icon: "🏭",
+          categories: [
+            { id: "Plats préparés", icon: "🍽️" },
+            { id: "Desserts", icon: "🍰" },
+            { id: "Snacking", icon: "🥪" },
+            { id: "Boissons", icon: "🥤" },
+          ],
+        },
+
+        Consommables: {
+          icon: "📦",
+          categories: [
+            { id: "Emballages", icon: "📦" },
+            { id: "Produits ménagers", icon: "🧹" },
+            { id: "Hygiène", icon: "🧼" },
+            { id: "Papier", icon: "🧻" },
+          ],
+        },
+
+        Technique: {
+          icon: "🛠️",
+          categories: [
+            { id: "Matériel", icon: "🔧" },
+            { id: "Entretien", icon: "🧽" },
+            { id: "Divers", icon: "🌀" },
+          ],
+        },
+      };
+
+      const UNITES = [
+        { id: "kg", label: "Kilogramme", type: "poids" },
+        { id: "g", label: "Gramme", type: "poids" },
+
+        { id: "L", label: "Litre", type: "volume" },
+        { id: "cl", label: "Centilitre", type: "volume" },
+        { id: "ml", label: "Millilitre", type: "volume" },
+
+        { id: "u", label: "Unité", type: "quantité" },
+        { id: "boite", label: "Boîte", type: "quantité" },
+        { id: "sachet", label: "Sachet", type: "quantité" },
+        { id: "pack", label: "Pack", type: "quantité" },
+      ];
+
+      const AUTO_CATEGORY_MAP = {
+        pomme: {
+          categorie: "Matières premières",
+          sous_categorie: "Fruits frais",
+          unite: "kg",
+          type_unite: "poids",
+        },
+        banane: {
+          categorie: "Matières premières",
+          sous_categorie: "Fruits frais",
+          unite: "kg",
+          type_unite: "poids",
+        },
+        carotte: {
+          categorie: "Matières premières",
+          sous_categorie: "Légumes frais",
+          unite: "kg",
+          type_unite: "poids",
+        },
+        lait: {
+          categorie: "Matières premières",
+          sous_categorie: "Produits laitiers",
+          unite: "L",
+          type_unite: "volume",
+        },
+        farine: {
+          categorie: "Matières premières",
+          sous_categorie: "Épicerie sèche",
+          unite: "kg",
+          type_unite: "poids",
+        },
+        coca: {
+          categorie: "Produits transformés",
+          sous_categorie: "Boissons",
+          unite: "L",
+          type_unite: "volume",
+        },
+      };
+
       const AppPro = () => {
         const PASS_RETOUR_PERSO = "1234";
         const [produits, setProduits] = React.useState([]);
@@ -49,8 +146,10 @@
 
         const [form, setForm] = React.useState({
           nom: "",
-          categorie: "Autres",
+          categorie: "Matières premières",
+          sous_categorie: "Autres",
           unite: "kg",
+          type_unite: "poids",
           quantite_initiale: "",
           quantite_restante: "",
           seuil_alerte: "",
@@ -60,6 +159,30 @@
           date_peremption: "",
           note: "",
         });
+
+        const applyAutoMapping = (value) => {
+          const nom = value.trim().toLowerCase();
+
+          const match = Object.entries(AUTO_CATEGORY_MAP).find(([key]) =>
+            nom.includes(key),
+          );
+
+          if (!match) {
+            setForm((prev) => ({ ...prev, nom: value }));
+            return;
+          }
+
+          const [, mapped] = match;
+
+          setForm((prev) => ({
+            ...prev,
+            nom: value,
+            categorie: mapped.categorie,
+            sous_categorie: mapped.sous_categorie,
+            unite: mapped.unite,
+            type_unite: mapped.type_unite,
+          }));
+        };
 
         const underThresholdCount = produits.filter(
           (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
@@ -105,7 +228,9 @@
             id: Date.now(),
             nom: form.nom.toUpperCase(),
             categorie: form.categorie,
+            sous_categorie: form.sous_categorie,
             unite: form.unite,
+            type_unite: form.type_unite,
             quantite_initiale: Number(form.quantite_initiale || 0),
             quantite_restante: Number(form.quantite_restante || 0),
             seuil_alerte: Number(form.seuil_alerte || 0),
@@ -239,7 +364,8 @@
                               {p.nom}
                             </div>
                             <div className="text-[9px] text-gray-400 italic font-bold uppercase tracking-tighter">
-                              {p.categorie || "Sans catégorie"}
+                              {p.categorie || "Sans catégorie"} •{" "}
+                              {p.sous_categorie || "Autres"}
                             </div>
                           </div>
 
@@ -422,9 +548,7 @@
                             type="text"
                             placeholder="Ex : Farine T55"
                             value={form.nom}
-                            onChange={(e) =>
-                              setForm({ ...form, nom: e.target.value })
-                            }
+                            onChange={(e) => applyAutoMapping(e.target.value)}
                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
                           />
                         </div>
