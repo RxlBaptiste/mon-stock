@@ -561,62 +561,6 @@
             return;
           }
 
-          const handleZeroStockNo = async () => {
-            if (!zeroStockProduct) return;
-
-            await deleteProductPro(zeroStockProduct.id);
-
-            setProduits((prev) =>
-              prev.filter((p) => p.id !== zeroStockProduct.id),
-            );
-            setShowZeroStockModal(false);
-            setZeroStockProduct(null);
-            setZeroStockDate("");
-          };
-
-          const handleZeroStockYes = async () => {
-            if (!zeroStockProduct) return;
-
-            if (!zeroStockDate) {
-              alert("Veuillez choisir une date");
-              return;
-            }
-
-            const updatedProduct = {
-              ...zeroStockProduct,
-              reappro_prevu: true,
-              date_suppression: zeroStockDate,
-            };
-
-            await saveProductPro(updatedProduct);
-
-            setProduits((prev) =>
-              prev.map((p) =>
-                p.id === zeroStockProduct.id ? updatedProduct : p,
-              ),
-            );
-
-            setShowZeroStockModal(false);
-            setZeroStockProduct(null);
-            setZeroStockDate("");
-          };
-
-          React.useEffect(() => {
-            const today = new Date().toISOString().split("T")[0];
-
-            produits.forEach(async (p) => {
-              if (
-                Number(p.quantite_restante) === 0 &&
-                p.reappro_prevu &&
-                p.date_suppression &&
-                p.date_suppression < today
-              ) {
-                await deleteProductPro(p.id);
-                setProduits((prev) => prev.filter((item) => item.id !== p.id));
-              }
-            });
-          }, [produits]);
-
           const updatedProduct = {
             ...product,
             quantite_restante: nextQty,
@@ -630,6 +574,63 @@
             prev.map((p) => (p.id === id ? updatedProduct : p)),
           );
         };
+
+        const handleZeroStockNo = async () => {
+          if (!zeroStockProduct) return;
+
+          await deleteProductPro(zeroStockProduct.id);
+
+          setProduits((prev) =>
+            prev.filter((p) => p.id !== zeroStockProduct.id),
+          );
+
+          setShowZeroStockModal(false);
+          setZeroStockProduct(null);
+          setZeroStockDate("");
+        };
+
+        const handleZeroStockYes = async () => {
+          if (!zeroStockProduct) return;
+
+          if (!zeroStockDate) {
+            alert("Veuillez choisir une date");
+            return;
+          }
+
+          const updatedProduct = {
+            ...zeroStockProduct,
+            reappro_prevu: true,
+            date_suppression: zeroStockDate,
+          };
+
+          await saveProductPro(updatedProduct);
+
+          setProduits((prev) =>
+            prev.map((p) =>
+              p.id === zeroStockProduct.id ? updatedProduct : p,
+            ),
+          );
+
+          setShowZeroStockModal(false);
+          setZeroStockProduct(null);
+          setZeroStockDate("");
+        };
+
+        React.useEffect(() => {
+          const today = new Date().toISOString().split("T")[0];
+
+          produits.forEach(async (p) => {
+            if (
+              Number(p.quantite_restante) === 0 &&
+              p.reappro_prevu &&
+              p.date_suppression &&
+              p.date_suppression < today
+            ) {
+              await deleteProductPro(p.id);
+              setProduits((prev) => prev.filter((item) => item.id !== p.id));
+            }
+          });
+        }, [produits]);
 
         const getAchatConseille = (p) => {
           const manque = Number(p.seuil_alerte) - Number(p.quantite_restante);
@@ -879,13 +880,13 @@
                           >
                             +1
                           </button>
-                          <button
-                            onClick={() => openReapproModal(p)}
-                            className="mt-3 w-full h-11 bg-white border border-blue-200 text-blue-600 rounded-2xl font-black shadow-sm active:scale-95"
-                          >
-                            Réapprovisionner
-                          </button>
                         </div>
+                        <button
+                          onClick={() => openReapproModal(p)}
+                          className="mt-3 w-full h-11 bg-white border border-blue-200 text-blue-600 rounded-2xl font-black shadow-sm active:scale-95"
+                        >
+                          Réapprovisionner
+                        </button>
                       </div>
                     );
                   })
