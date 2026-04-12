@@ -91,6 +91,11 @@
         };
 
         const handleAddProduct = async () => {
+          if (!form.nom.trim()) {
+            alert("Veuillez entrer un nom de produit");
+            return;
+          }
+
           const prixUnitaire = calculPrixUnitaire(
             form.prix_total_achat,
             form.quantite_initiale,
@@ -381,6 +386,143 @@
                 📦
               </button>
             </nav>
+            {showAddModal && (
+              <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50">
+                <div className="bg-white w-full max-w-md rounded-t-[2rem] p-5 animate-up max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-sm font-black uppercase text-slate-800">
+                      Ajouter un produit pro
+                    </h2>
+                    <button
+                      onClick={() => setShowAddModal(false)}
+                      className="text-gray-400 text-xl font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Nom du produit"
+                      value={form.nom}
+                      onChange={(e) =>
+                        setForm({ ...form, nom: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Catégorie"
+                      value={form.categorie}
+                      onChange={(e) =>
+                        setForm({ ...form, categorie: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Unité (kg, L, pièce...)"
+                      value={form.unite}
+                      onChange={(e) =>
+                        setForm({ ...form, unite: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Quantité initiale"
+                      value={form.quantite_initiale}
+                      onChange={(e) =>
+                        setForm({ ...form, quantite_initiale: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Quantité restante"
+                      value={form.quantite_restante}
+                      onChange={(e) =>
+                        setForm({ ...form, quantite_restante: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Seuil d'alerte"
+                      value={form.seuil_alerte}
+                      onChange={(e) =>
+                        setForm({ ...form, seuil_alerte: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Prix total achat"
+                      value={form.prix_total_achat}
+                      onChange={(e) =>
+                        setForm({ ...form, prix_total_achat: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="text"
+                      placeholder="Fournisseur"
+                      value={form.fournisseur}
+                      onChange={(e) =>
+                        setForm({ ...form, fournisseur: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="date"
+                      value={form.date_achat}
+                      onChange={(e) =>
+                        setForm({ ...form, date_achat: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <input
+                      type="date"
+                      value={form.date_peremption}
+                      onChange={(e) =>
+                        setForm({ ...form, date_peremption: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm"
+                    />
+
+                    <textarea
+                      placeholder="Note"
+                      value={form.note}
+                      onChange={(e) =>
+                        setForm({ ...form, note: e.target.value })
+                      }
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm min-h-[90px]"
+                    />
+
+                    <button
+                      onClick={handleAddProduct}
+                      className="w-full bg-blue-600 text-white rounded-2xl py-3 font-black uppercase text-sm shadow-sm"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       };
