@@ -400,6 +400,10 @@
 
         const [showReapproModal, setShowReapproModal] = React.useState(false);
         const [selectedProduct, setSelectedProduct] = React.useState(null);
+        const [showZeroStockModal, setShowZeroStockModal] =
+          React.useState(false);
+        const [zeroStockProduct, setZeroStockProduct] = React.useState(null);
+        const [zeroStockDate, setZeroStockDate] = React.useState("");
 
         const [reapproForm, setReapproForm] = React.useState({
           quantite_ajoutee: "",
@@ -407,6 +411,16 @@
           fournisseur: "",
           date_achat: "",
         });
+
+        const deleteProductPro = async (id) => {
+          await fetch(`${API_PRO_URL}?action=delete_product_pro`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id }),
+          });
+        };
 
         const normalize = (str) =>
           (str || "")
@@ -495,6 +509,8 @@
             date_achat: form.date_achat || null,
             date_peremption: form.date_peremption || null,
             note: form.note,
+            reappro_prevu: false,
+            date_suppression: null,
           };
 
           await saveProductPro(newProduct);
@@ -519,16 +535,100 @@
         };
 
         const updateQuantity = async (id, delta) => {
-          const updated = produits.map((p) => {
-            if (p.id !== id) return p;
+          const product = produits.find((p) => p.id === id);
+          if (!product) return;
 
-            const nextQty = Math.max(0, Number(p.quantite_restante) + delta);
-            const updatedProduct = { ...p, quantite_restante: nextQty };
-            saveProductPro(updatedProduct);
-            return updatedProduct;
-          });
+          const nextQty = Math.max(
+            0,
+            Number(product.quantite_restante) + delta,
+          );
 
-          setProduits(updated);
+          if (nextQty === 0) {
+            const updatedProduct = {
+              ...product,
+              quantite_restante: 0,
+            };
+
+            await saveProductPro(updatedProduct);
+
+            setProduits((prev) =>
+              prev.map((p) => (p.id === id ? updatedProduct : p)),
+            );
+
+            setZeroStockProduct(updatedProduct);
+            setZeroStockDate("");
+            setShowZeroStockModal(true);
+            return;
+          }
+
+          const handleZeroStockNo = async () => {
+            if (!zeroStockProduct) return;
+
+            await deleteProductPro(zeroStockProduct.id);
+
+            setProduits((prev) =>
+              prev.filter((p) => p.id !== zeroStockProduct.id),
+            );
+            setShowZeroStockModal(false);
+            setZeroStockProduct(null);
+            setZeroStockDate("");
+          };
+
+          const handleZeroStockYes = async () => {
+            if (!zeroStockProduct) return;
+
+            if (!zeroStockDate) {
+              alert("Veuillez choisir une date");
+              return;
+            }
+
+            const updatedProduct = {
+              ...zeroStockProduct,
+              reappro_prevu: true,
+              date_suppression: zeroStockDate,
+            };
+
+            await saveProductPro(updatedProduct);
+
+            setProduits((prev) =>
+              prev.map((p) =>
+                p.id === zeroStockProduct.id ? updatedProduct : p,
+              ),
+            );
+
+            setShowZeroStockModal(false);
+            setZeroStockProduct(null);
+            setZeroStockDate("");
+          };
+
+          React.useEffect(() => {
+            const today = new Date().toISOString().split("T")[0];
+
+            produits.forEach(async (p) => {
+              if (
+                Number(p.quantite_restante) === 0 &&
+                p.reappro_prevu &&
+                p.date_suppression &&
+                p.date_suppression < today
+              ) {
+                await deleteProductPro(p.id);
+                setProduits((prev) => prev.filter((item) => item.id !== p.id));
+              }
+            });
+          }, [produits]);
+
+          const updatedProduct = {
+            ...product,
+            quantite_restante: nextQty,
+            reappro_prevu: false,
+            date_suppression: null,
+          };
+
+          await saveProductPro(updatedProduct);
+
+          setProduits((prev) =>
+            prev.map((p) => (p.id === id ? updatedProduct : p)),
+          );
         };
 
         const getAchatConseille = (p) => {
@@ -1301,6 +1401,67 @@
                       className="w-full bg-blue-600 text-white rounded-[1.6rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
                     >
                       Valider le réapprovisionnement
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {showZeroStockModal && zeroStockProduct && (
+              <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-[2px] flex items-end justify-center z-50 pt-6">
+                <div className="bg-[#f8fafc] w-full max-w-md rounded-t-[2.3rem] p-5 animate-up max-h-[88vh] overflow-y-auto shadow-2xl">
+                  <div className="flex justify-between items-center mb-5">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-orange-500">
+                        Stock à zéro
+                      </p>
+                      <h2 className="text-xl font-black uppercase text-slate-800 leading-none mt-1">
+                        {zeroStockProduct.nom}
+                      </h2>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShowZeroStockModal(false);
+                        setZeroStockProduct(null);
+                        setZeroStockDate("");
+                      }}
+                      className="w-11 h-11 rounded-full bg-white border border-slate-200 text-slate-400 text-2xl flex items-center justify-center shadow-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm mb-4">
+                    <p className="text-sm font-black text-slate-800">
+                      Un réapprovisionnement est-il prévu bientôt ?
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm mb-4">
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-2">
+                      Si oui, date limite avant suppression
+                    </label>
+                    <input
+                      type="date"
+                      value={zeroStockDate}
+                      onChange={(e) => setZeroStockDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={handleZeroStockNo}
+                      className="w-full bg-red-500 text-white rounded-[1.4rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
+                    >
+                      Non, supprimer
+                    </button>
+
+                    <button
+                      onClick={handleZeroStockYes}
+                      className="w-full bg-blue-600 text-white rounded-[1.4rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
+                    >
+                      Oui, conserver
                     </button>
                   </div>
                 </div>
