@@ -248,8 +248,10 @@
 
           setForm({
             nom: "",
-            categorie: "Autres",
+            categorie: "Matières premières",
+            sous_categorie: "Fruits frais",
             unite: "kg",
+            type_unite: "poids",
             quantite_initiale: "",
             quantite_restante: "",
             seuil_alerte: "",
@@ -284,6 +286,27 @@
             quantite: manque,
             cout,
           };
+        };
+
+        const handleCategorieChange = (value) => {
+          const firstSousCategorie =
+            STRUCTURE_PRO[value]?.categories?.[0]?.id || "Autres";
+
+          setForm((prev) => ({
+            ...prev,
+            categorie: value,
+            sous_categorie: firstSousCategorie,
+          }));
+        };
+
+        const handleUniteChange = (value) => {
+          const uniteTrouvee = UNITES.find((u) => u.id === value);
+
+          setForm((prev) => ({
+            ...prev,
+            unite: value,
+            type_unite: uniteTrouvee ? uniteTrouvee.type : "quantité",
+          }));
         };
 
         return (
@@ -558,29 +581,60 @@
                             <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
                               Catégorie
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={form.categorie}
                               onChange={(e) =>
-                                setForm({ ...form, categorie: e.target.value })
+                                handleCategorieChange(e.target.value)
                               }
-                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                            />
+                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                            >
+                              {categoriesPrincipales.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {STRUCTURE_PRO[cat].icon} {cat}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
                             <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
                               Unité
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={form.unite}
                               onChange={(e) =>
-                                setForm({ ...form, unite: e.target.value })
+                                handleUniteChange(e.target.value)
                               }
-                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                            />
+                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                            >
+                              {UNITES.map((unite) => (
+                                <option key={unite.id} value={unite.id}>
+                                  {unite.id} — {unite.label}
+                                </option>
+                              ))}
+                            </select>
                           </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                            Sous-catégorie
+                          </label>
+                          <select
+                            value={form.sous_categorie}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                sous_categorie: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                          >
+                            {sousCategoriesDisponibles.map((sub) => (
+                              <option key={sub.id} value={sub.id}>
+                                {sub.icon} {sub.id}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
