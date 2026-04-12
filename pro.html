@@ -39,103 +39,134 @@
     <div id="root"></div>
 
     <script type="text/babel">
-      const API_PRO_URL = "https://baptisterouxel.fr/stock/stock_pro_api.php";
+            const API_PRO_URL = "https://baptisterouxel.fr/stock/stock_pro_api.php";
 
-      const STRUCTURE_PRO = {
-        "Matières premières": {
-          icon: "🌾",
-          categories: [
-            { id: "Fruits frais", icon: "🍎" },
-            { id: "Légumes frais", icon: "🥕" },
-            { id: "Viandes", icon: "🥩" },
-            { id: "Poissons", icon: "🐟" },
-            { id: "Produits laitiers", icon: "🥛" },
-            { id: "Épicerie sèche", icon: "🥫" },
-            { id: "Surgelés", icon: "❄️" },
-          ],
-        },
+            const STRUCTURE_PRO = {
+              "Matières premières": {
+                icon: "🌾",
+                categories: [
+                  { id: "Fruits frais", icon: "🍎" },
+                  { id: "Légumes frais", icon: "🥕" },
+                  { id: "Viandes", icon: "🥩" },
+                  { id: "Poissons", icon: "🐟" },
+                  { id: "Produits laitiers", icon: "🥛" },
+                  { id: "Épicerie sèche", icon: "🥫" },
+                  { id: "Surgelés", icon: "❄️" },
+                ],
+              },
 
-        "Produits transformés": {
-          icon: "🏭",
-          categories: [
-            { id: "Plats préparés", icon: "🍽️" },
-            { id: "Desserts", icon: "🍰" },
-            { id: "Snacking", icon: "🥪" },
-            { id: "Boissons", icon: "🥤" },
-          ],
-        },
+              "Produits transformés": {
+                icon: "🏭",
+                categories: [
+                  { id: "Plats préparés", icon: "🍽️" },
+                  { id: "Desserts", icon: "🍰" },
+                  { id: "Snacking", icon: "🥪" },
+                  { id: "Boissons", icon: "🥤" },
+                ],
+              },
 
-        Consommables: {
-          icon: "📦",
-          categories: [
-            { id: "Emballages", icon: "📦" },
-            { id: "Produits ménagers", icon: "🧹" },
-            { id: "Hygiène", icon: "🧼" },
-            { id: "Papier", icon: "🧻" },
-          ],
-        },
+              Consommables: {
+                icon: "📦",
+                categories: [
+                  { id: "Emballages", icon: "📦" },
+                  { id: "Produits ménagers", icon: "🧹" },
+                  { id: "Hygiène", icon: "🧼" },
+                  { id: "Papier", icon: "🧻" },
+                ],
+              },
 
-        Technique: {
-          icon: "🛠️",
-          categories: [
-            { id: "Matériel", icon: "🔧" },
-            { id: "Entretien", icon: "🧽" },
-            { id: "Divers", icon: "🌀" },
-          ],
-        },
-      };
+              Technique: {
+                icon: "🛠️",
+                categories: [
+                  { id: "Matériel", icon: "🔧" },
+                  { id: "Entretien", icon: "🧽" },
+                  { id: "Divers", icon: "🌀" },
+                ],
+              },
+            };
 
-      const UNITES = [
-        { id: "kg", label: "Kilogramme", type: "poids" },
-        { id: "g", label: "Gramme", type: "poids" },
+            const UNITES = [
+              { id: "kg", label: "Kilogramme", type: "poids" },
+              { id: "g", label: "Gramme", type: "poids" },
 
-        { id: "L", label: "Litre", type: "volume" },
-        { id: "cl", label: "Centilitre", type: "volume" },
-        { id: "ml", label: "Millilitre", type: "volume" },
+              { id: "L", label: "Litre", type: "volume" },
+              { id: "cl", label: "Centilitre", type: "volume" },
+              { id: "ml", label: "Millilitre", type: "volume" },
 
-        { id: "u", label: "Unité", type: "quantité" },
-        { id: "boite", label: "Boîte", type: "quantité" },
-        { id: "sachet", label: "Sachet", type: "quantité" },
-        { id: "pack", label: "Pack", type: "quantité" },
-      ];
+              { id: "u", label: "Unité", type: "quantité" },
+              { id: "boite", label: "Boîte", type: "quantité" },
+              { id: "sachet", label: "Sachet", type: "quantité" },
+              { id: "pack", label: "Pack", type: "quantité" },
+            ];
 
-      const AUTO_CATEGORY_MAP = {
-        pomme: {
-          categorie: "Matières premières",
-          sous_categorie: "Fruits frais",
-          unite: "kg",
-          type_unite: "poids",
-        },
-        banane: {
-          categorie: "Matières premières",
-          sous_categorie: "Fruits frais",
-          unite: "kg",
-          type_unite: "poids",
-        },
-        carotte: {
-          categorie: "Matières premières",
-          sous_categorie: "Légumes frais",
-          unite: "kg",
-          type_unite: "poids",
-        },
-        lait: {
-          categorie: "Matières premières",
-          sous_categorie: "Produits laitiers",
-          unite: "L",
-          type_unite: "volume",
-        },
-        farine: {
-          categorie: "Matières premières",
-          sous_categorie: "Épicerie sèche",
-          unite: "kg",
-          type_unite: "poids",
-        },
-        coca: {
-          categorie: "Produits transformés",
-          sous_categorie: "Boissons",
-          unite: "L",
-          type_unite: "volume",
-        },
+            const AUTO_CATEGORY_MAP = {
+        // 🍎 FRUITS
+        pomme: { categorie: "Matières premières", sous_categorie: "Fruits frais", unite: "kg", type_unite: "poids" },
+        banane: { categorie: "Matières premières", sous_categorie: "Fruits frais", unite: "kg", type_unite: "poids" },
+        orange: { categorie: "Matières premières", sous_categorie: "Fruits frais", unite: "kg", type_unite: "poids" },
+        citron: { categorie: "Matières premières", sous_categorie: "Fruits frais", unite: "kg", type_unite: "poids" },
+        fraise: { categorie: "Matières premières", sous_categorie: "Fruits frais", unite: "kg", type_unite: "poids" },
+
+        // 🥕 LÉGUMES
+        carotte: { categorie: "Matières premières", sous_categorie: "Légumes frais", unite: "kg", type_unite: "poids" },
+        tomate: { categorie: "Matières premières", sous_categorie: "Légumes frais", unite: "kg", type_unite: "poids" },
+        salade: { categorie: "Matières premières", sous_categorie: "Légumes frais", unite: "u", type_unite: "quantité" },
+        oignon: { categorie: "Matières premières", sous_categorie: "Légumes frais", unite: "kg", type_unite: "poids" },
+        pomme de terre: { categorie: "Matières premières", sous_categorie: "Légumes frais", unite: "kg", type_unite: "poids" },
+
+        // 🥩 VIANDE
+        poulet: { categorie: "Matières premières", sous_categorie: "Viandes", unite: "kg", type_unite: "poids" },
+        boeuf: { categorie: "Matières premières", sous_categorie: "Viandes", unite: "kg", type_unite: "poids" },
+        steak: { categorie: "Matières premières", sous_categorie: "Viandes", unite: "kg", type_unite: "poids" },
+        jambon: { categorie: "Matières premières", sous_categorie: "Viandes", unite: "kg", type_unite: "poids" },
+
+        // 🐟 POISSON
+        saumon: { categorie: "Matières premières", sous_categorie: "Poissons", unite: "kg", type_unite: "poids" },
+        thon: { categorie: "Matières premières", sous_categorie: "Poissons", unite: "kg", type_unite: "poids" },
+
+        // 🥛 LAITIER
+        lait: { categorie: "Matières premières", sous_categorie: "Produits laitiers", unite: "L", type_unite: "volume" },
+        beurre: { categorie: "Matières premières", sous_categorie: "Produits laitiers", unite: "kg", type_unite: "poids" },
+        fromage: { categorie: "Matières premières", sous_categorie: "Produits laitiers", unite: "kg", type_unite: "poids" },
+        yaourt: { categorie: "Matières premières", sous_categorie: "Produits laitiers", unite: "u", type_unite: "quantité" },
+        creme: { categorie: "Matières premières", sous_categorie: "Produits laitiers", unite: "L", type_unite: "volume" },
+
+        // 🥫 ÉPICERIE
+        farine: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "kg", type_unite: "poids" },
+        sucre: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "kg", type_unite: "poids" },
+        riz: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "kg", type_unite: "poids" },
+        pates: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "kg", type_unite: "poids" },
+        huile: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "L", type_unite: "volume" },
+        sel: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "kg", type_unite: "poids" },
+        poivre: { categorie: "Matières premières", sous_categorie: "Épicerie sèche", unite: "g", type_unite: "poids" },
+
+        // ❄️ SURGELÉS
+        surgele: { categorie: "Matières premières", sous_categorie: "Surgelés", unite: "kg", type_unite: "poids" },
+
+        // 🥤 BOISSONS
+        coca: { categorie: "Produits transformés", sous_categorie: "Boissons", unite: "L", type_unite: "volume" },
+        eau: { categorie: "Produits transformés", sous_categorie: "Boissons", unite: "L", type_unite: "volume" },
+        jus: { categorie: "Produits transformés", sous_categorie: "Boissons", unite: "L", type_unite: "volume" },
+        soda: { categorie: "Produits transformés", sous_categorie: "Boissons", unite: "L", type_unite: "volume" },
+
+        // 🍽️ PLATS
+        pizza: { categorie: "Produits transformés", sous_categorie: "Plats préparés", unite: "u", type_unite: "quantité" },
+        sandwich: { categorie: "Produits transformés", sous_categorie: "Snacking", unite: "u", type_unite: "quantité" },
+        burger: { categorie: "Produits transformés", sous_categorie: "Snacking", unite: "u", type_unite: "quantité" },
+
+        // 📦 CONSOMMABLES
+        carton: { categorie: "Consommables", sous_categorie: "Emballages", unite: "u", type_unite: "quantité" },
+        sac: { categorie: "Consommables", sous_categorie: "Emballages", unite: "u", type_unite: "quantité" },
+        film: { categorie: "Consommables", sous_categorie: "Emballages", unite: "u", type_unite: "quantité" },
+
+        // 🧹 MÉNAGER
+        produit vaisselle: { categorie: "Consommables", sous_categorie: "Produits ménagers", unite: "L", type_unite: "volume" },
+        javel: { categorie: "Consommables", sous_categorie: "Produits ménagers", unite: "L", type_unite: "volume" },
+        nettoyant: { categorie: "Consommables", sous_categorie: "Produits ménagers", unite: "L", type_unite: "volume" },
+
+        // 🧻 PAPIER
+        sopalin: { categorie: "Consommables", sous_categorie: "Papier", unite: "u", type_unite: "quantité" },
+        papier toilette: { categorie: "Consommables", sous_categorie: "Papier", unite: "u", type_unite: "quantité" },
       };
 
       const AppPro = () => {
@@ -160,11 +191,17 @@
           note: "",
         });
 
+        const normalize = (str) =>
+          str
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
         const applyAutoMapping = (value) => {
-          const nom = value.trim().toLowerCase();
+          const nom = normalize(value);
 
           const match = Object.entries(AUTO_CATEGORY_MAP).find(([key]) =>
-            nom.includes(key),
+            nom.includes(normalize(key))
           );
 
           if (!match) {
@@ -184,652 +221,652 @@
           }));
         };
 
-        const underThresholdCount = produits.filter(
-          (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
-        ).length;
+              const underThresholdCount = produits.filter(
+                (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
+              ).length;
 
-        React.useEffect(() => {
-          fetch(`${API_PRO_URL}?action=get_stock_pro`)
-            .then((res) => res.json())
-            .then((data) => setProduits(Array.isArray(data) ? data : []))
-            .catch(() => setProduits([]));
-        }, []);
+              React.useEffect(() => {
+                fetch(`${API_PRO_URL}?action=get_stock_pro`)
+                  .then((res) => res.json())
+                  .then((data) => setProduits(Array.isArray(data) ? data : []))
+                  .catch(() => setProduits([]));
+              }, []);
 
-        const calculPrixUnitaire = (prixTotal, quantiteInitiale) => {
-          const prix = Number(prixTotal);
-          const qte = Number(quantiteInitiale);
+              const calculPrixUnitaire = (prixTotal, quantiteInitiale) => {
+                const prix = Number(prixTotal);
+                const qte = Number(quantiteInitiale);
 
-          if (!prix || !qte) return 0;
-          return +(prix / qte).toFixed(4);
-        };
+                if (!prix || !qte) return 0;
+                return +(prix / qte).toFixed(4);
+              };
 
-        const saveProductPro = async (product) => {
-          await fetch(`${API_PRO_URL}?action=save_product_pro`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(product),
-          });
-        };
+              const saveProductPro = async (product) => {
+                await fetch(`${API_PRO_URL}?action=save_product_pro`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(product),
+                });
+              };
 
-        const handleAddProduct = async () => {
-          if (!form.nom.trim()) {
-            alert("Veuillez entrer un nom de produit");
-            return;
-          }
+              const handleAddProduct = async () => {
+                if (!form.nom.trim()) {
+                  alert("Veuillez entrer un nom de produit");
+                  return;
+                }
 
-          const prixUnitaire = calculPrixUnitaire(
-            form.prix_total_achat,
-            form.quantite_initiale,
-          );
+                const prixUnitaire = calculPrixUnitaire(
+                  form.prix_total_achat,
+                  form.quantite_initiale,
+                );
 
-          const newProduct = {
-            id: Date.now(),
-            nom: form.nom.toUpperCase(),
-            categorie: form.categorie,
-            sous_categorie: form.sous_categorie,
-            unite: form.unite,
-            type_unite: form.type_unite,
-            quantite_initiale: Number(form.quantite_initiale || 0),
-            quantite_restante: Number(form.quantite_restante || 0),
-            seuil_alerte: Number(form.seuil_alerte || 0),
-            prix_total_achat: Number(form.prix_total_achat || 0),
-            prix_unitaire: prixUnitaire,
-            fournisseur: form.fournisseur,
-            date_achat: form.date_achat || null,
-            date_peremption: form.date_peremption || null,
-            note: form.note,
-          };
+                const newProduct = {
+                  id: Date.now(),
+                  nom: form.nom.toUpperCase(),
+                  categorie: form.categorie,
+                  sous_categorie: form.sous_categorie,
+                  unite: form.unite,
+                  type_unite: form.type_unite,
+                  quantite_initiale: Number(form.quantite_initiale || 0),
+                  quantite_restante: Number(form.quantite_restante || 0),
+                  seuil_alerte: Number(form.seuil_alerte || 0),
+                  prix_total_achat: Number(form.prix_total_achat || 0),
+                  prix_unitaire: prixUnitaire,
+                  fournisseur: form.fournisseur,
+                  date_achat: form.date_achat || null,
+                  date_peremption: form.date_peremption || null,
+                  note: form.note,
+                };
 
-          await saveProductPro(newProduct);
-          setProduits((prev) => [newProduct, ...prev]);
-          setShowAddModal(false);
+                await saveProductPro(newProduct);
+                setProduits((prev) => [newProduct, ...prev]);
+                setShowAddModal(false);
 
-          setForm({
-            nom: "",
-            categorie: "Matières premières",
-            sous_categorie: "Fruits frais",
-            unite: "kg",
-            type_unite: "poids",
-            quantite_initiale: "",
-            quantite_restante: "",
-            seuil_alerte: "",
-            prix_total_achat: "",
-            fournisseur: "",
-            date_achat: "",
-            date_peremption: "",
-            note: "",
-          });
-        };
+                setForm({
+                  nom: "",
+                  categorie: "Matières premières",
+                  sous_categorie: "Fruits frais",
+                  unite: "kg",
+                  type_unite: "poids",
+                  quantite_initiale: "",
+                  quantite_restante: "",
+                  seuil_alerte: "",
+                  prix_total_achat: "",
+                  fournisseur: "",
+                  date_achat: "",
+                  date_peremption: "",
+                  note: "",
+                });
+              };
 
-        const updateQuantity = async (id, delta) => {
-          const updated = produits.map((p) => {
-            if (p.id !== id) return p;
+              const updateQuantity = async (id, delta) => {
+                const updated = produits.map((p) => {
+                  if (p.id !== id) return p;
 
-            const nextQty = Math.max(0, Number(p.quantite_restante) + delta);
-            const updatedProduct = { ...p, quantite_restante: nextQty };
-            saveProductPro(updatedProduct);
-            return updatedProduct;
-          });
+                  const nextQty = Math.max(0, Number(p.quantite_restante) + delta);
+                  const updatedProduct = { ...p, quantite_restante: nextQty };
+                  saveProductPro(updatedProduct);
+                  return updatedProduct;
+                });
 
-          setProduits(updated);
-        };
+                setProduits(updated);
+              };
 
-        const getAchatConseille = (p) => {
-          const manque = Number(p.seuil_alerte) - Number(p.quantite_restante);
-          if (manque <= 0) return null;
+              const getAchatConseille = (p) => {
+                const manque = Number(p.seuil_alerte) - Number(p.quantite_restante);
+                if (manque <= 0) return null;
 
-          const cout = +(manque * Number(p.prix_unitaire || 0)).toFixed(2);
+                const cout = +(manque * Number(p.prix_unitaire || 0)).toFixed(2);
 
-          return {
-            quantite: manque,
-            cout,
-          };
-        };
+                return {
+                  quantite: manque,
+                  cout,
+                };
+              };
 
-        const handleCategorieChange = (value) => {
-          const firstSousCategorie =
-            STRUCTURE_PRO[value]?.categories?.[0]?.id || "Autres";
+              const handleCategorieChange = (value) => {
+                const firstSousCategorie =
+                  STRUCTURE_PRO[value]?.categories?.[0]?.id || "Autres";
 
-          setForm((prev) => ({
-            ...prev,
-            categorie: value,
-            sous_categorie: firstSousCategorie,
-          }));
-        };
+                setForm((prev) => ({
+                  ...prev,
+                  categorie: value,
+                  sous_categorie: firstSousCategorie,
+                }));
+              };
 
-        const handleUniteChange = (value) => {
-          const uniteTrouvee = UNITES.find((u) => u.id === value);
+              const handleUniteChange = (value) => {
+                const uniteTrouvee = UNITES.find((u) => u.id === value);
 
-          setForm((prev) => ({
-            ...prev,
-            unite: value,
-            type_unite: uniteTrouvee ? uniteTrouvee.type : "quantité",
-          }));
-        };
+                setForm((prev) => ({
+                  ...prev,
+                  unite: value,
+                  type_unite: uniteTrouvee ? uniteTrouvee.type : "quantité",
+                }));
+              };
 
-        const categoriesPrincipales = Object.keys(STRUCTURE_PRO);
+              const categoriesPrincipales = Object.keys(STRUCTURE_PRO);
 
-        const sousCategoriesDisponibles =
-          STRUCTURE_PRO[form.categorie]?.categories || [];
+              const sousCategoriesDisponibles =
+                STRUCTURE_PRO[form.categorie]?.categories || [];
 
-        return (
-          <div className="max-w-md mx-auto min-h-screen pb-32">
-            <header className="bg-slate-800 p-5 sticky top-0 z-30 border-b shadow-sm text-white">
-              <div className="flex justify-between items-center mb-4">
-                <h1 className="font-black italic text-lg uppercase text-blue-300 underline leading-none">
-                  MON STOCKAGE PRO
-                </h1>
+              return (
+                <div className="max-w-md mx-auto min-h-screen pb-32">
+                  <header className="bg-slate-800 p-5 sticky top-0 z-30 border-b shadow-sm text-white">
+                    <div className="flex justify-between items-center mb-4">
+                      <h1 className="font-black italic text-lg uppercase text-blue-300 underline leading-none">
+                        MON STOCKAGE PRO
+                      </h1>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      const code = prompt("Code pour revenir au mode perso");
-                      if (code === PASS_RETOUR_PERSO) {
-                        window.location.href = "index.html";
-                      } else if (code !== null) {
-                        alert("Code incorrect");
-                      }
-                    }}
-                    className="bg-gray-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
-                  >
-                    Perso
-                  </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const code = prompt("Code pour revenir au mode perso");
+                            if (code === PASS_RETOUR_PERSO) {
+                              window.location.href = "index.html";
+                            } else if (code !== null) {
+                              alert("Code incorrect");
+                            }
+                          }}
+                          className="bg-gray-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
+                        >
+                          Perso
+                        </button>
 
-                  <button
-                    onClick={() => setView(view === "home" ? "achats" : "home")}
-                    className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
-                  >
-                    {view === "home" ? "Achats" : "Stock"}
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            <main className="p-4">
-              {view === "home" && (
-                <div className="mb-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 shadow-sm">
-                      <div className="text-[9px] font-black uppercase text-orange-500 tracking-widest">
-                        Sous seuil
-                      </div>
-                      <div className="mt-1 text-2xl font-black text-orange-600">
-                        {underThresholdCount}
+                        <button
+                          onClick={() => setView(view === "home" ? "achats" : "home")}
+                          className="bg-blue-600 text-white px-3 py-2 rounded-xl text-[9px] font-bold uppercase shadow-sm"
+                        >
+                          {view === "home" ? "Achats" : "Stock"}
+                        </button>
                       </div>
                     </div>
+                  </header>
 
-                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm">
-                      <div className="text-[9px] font-black uppercase text-blue-500 tracking-widest">
-                        Produits
-                      </div>
-                      <div className="mt-1 text-2xl font-black text-blue-600">
-                        {produits.length}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {view === "home" &&
-                (produits.length === 0 ? (
-                  <div className="bg-white rounded-[2.5rem] shadow-sm p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-60 font-black">
-                    Aucun produit pro
-                  </div>
-                ) : (
-                  produits.map((p) => {
-                    const achat = getAchatConseille(p);
-
-                    return (
-                      <div
-                        key={p.id}
-                        className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-5 mb-3 animate-up"
-                      >
-                        <div className="flex justify-between items-start gap-3">
-                          <div>
-                            <div className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">
-                              {p.nom}
+                  <main className="p-4">
+                    {view === "home" && (
+                      <div className="mb-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[9px] font-black uppercase text-orange-500 tracking-widest">
+                              Sous seuil
                             </div>
-                            <div className="text-[9px] text-gray-400 italic font-bold uppercase tracking-tighter">
-                              {p.categorie || "Sans catégorie"} •{" "}
-                              {p.sous_categorie || "Autres"}
+                            <div className="mt-1 text-2xl font-black text-orange-600">
+                              {underThresholdCount}
                             </div>
                           </div>
 
-                          <div className="text-right">
-                            <div className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">
-                              {p.unite}
+                          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm">
+                            <div className="text-[9px] font-black uppercase text-blue-500 tracking-widest">
+                              Produits
+                            </div>
+                            <div className="mt-1 text-2xl font-black text-blue-600">
+                              {produits.length}
                             </div>
                           </div>
                         </div>
+                      </div>
+                    )}
 
-                        <div className="grid grid-cols-2 gap-2 mt-4">
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <div className="text-[8px] font-black uppercase text-gray-400">
-                              Initial
-                            </div>
-                            <div className="font-black text-sm text-slate-700">
-                              {p.quantite_initiale} {p.unite}
-                            </div>
-                          </div>
-
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <div className="text-[8px] font-black uppercase text-gray-400">
-                              Restant
-                            </div>
-                            <div className="font-black text-sm text-slate-700">
-                              {p.quantite_restante} {p.unite}
-                            </div>
-                          </div>
-
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <div className="text-[8px] font-black uppercase text-gray-400">
-                              Seuil
-                            </div>
-                            <div className="font-black text-sm text-slate-700">
-                              {p.seuil_alerte} {p.unite}
-                            </div>
-                          </div>
-
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <div className="text-[8px] font-black uppercase text-gray-400">
-                              Prix / unité
-                            </div>
-                            <div className="font-black text-sm text-slate-700">
-                              {Number(p.prix_unitaire || 0).toFixed(2)} €
-                            </div>
-                          </div>
+                    {view === "home" &&
+                      (produits.length === 0 ? (
+                        <div className="bg-white rounded-[2.5rem] shadow-sm p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-60 font-black">
+                          Aucun produit pro
                         </div>
+                      ) : (
+                        produits.map((p) => {
+                          const achat = getAchatConseille(p);
 
-                        {achat && (
-                          <div className="mt-3 bg-orange-50 border border-orange-100 rounded-2xl p-3">
-                            <div className="text-[9px] font-black uppercase text-orange-500">
-                              À racheter
+                          return (
+                            <div
+                              key={p.id}
+                              className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-5 mb-3 animate-up"
+                            >
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <div className="font-bold text-sm text-gray-800 uppercase leading-none mb-1">
+                                    {p.nom}
+                                  </div>
+                                  <div className="text-[9px] text-gray-400 italic font-bold uppercase tracking-tighter">
+                                    {p.categorie || "Sans catégorie"} •{" "}
+                                    {p.sous_categorie || "Autres"}
+                                  </div>
+                                </div>
+
+                                <div className="text-right">
+                                  <div className="text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-lg uppercase">
+                                    {p.unite}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 mt-4">
+                                <div className="bg-gray-50 rounded-xl p-3">
+                                  <div className="text-[8px] font-black uppercase text-gray-400">
+                                    Initial
+                                  </div>
+                                  <div className="font-black text-sm text-slate-700">
+                                    {p.quantite_initiale} {p.unite}
+                                  </div>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-xl p-3">
+                                  <div className="text-[8px] font-black uppercase text-gray-400">
+                                    Restant
+                                  </div>
+                                  <div className="font-black text-sm text-slate-700">
+                                    {p.quantite_restante} {p.unite}
+                                  </div>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-xl p-3">
+                                  <div className="text-[8px] font-black uppercase text-gray-400">
+                                    Seuil
+                                  </div>
+                                  <div className="font-black text-sm text-slate-700">
+                                    {p.seuil_alerte} {p.unite}
+                                  </div>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-xl p-3">
+                                  <div className="text-[8px] font-black uppercase text-gray-400">
+                                    Prix / unité
+                                  </div>
+                                  <div className="font-black text-sm text-slate-700">
+                                    {Number(p.prix_unitaire || 0).toFixed(2)} €
+                                  </div>
+                                </div>
+                              </div>
+
+                              {achat && (
+                                <div className="mt-3 bg-orange-50 border border-orange-100 rounded-2xl p-3">
+                                  <div className="text-[9px] font-black uppercase text-orange-500">
+                                    À racheter
+                                  </div>
+                                  <div className="text-sm font-black text-orange-700">
+                                    {achat.quantite.toFixed(2)} {p.unite} ≈{" "}
+                                    {achat.cout.toFixed(2)} €
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex gap-2 mt-4">
+                                <button
+                                  onClick={() => updateQuantity(p.id, -1)}
+                                  className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                                >
+                                  -1
+                                </button>
+                                <button
+                                  onClick={() => updateQuantity(p.id, -0.5)}
+                                  className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                                >
+                                  -0.5
+                                </button>
+                                <button
+                                  onClick={() => updateQuantity(p.id, 1)}
+                                  className="w-10 h-10 bg-blue-600 text-white rounded-xl font-bold shadow-sm active:scale-90"
+                                >
+                                  +1
+                                </button>
+                              </div>
                             </div>
-                            <div className="text-sm font-black text-orange-700">
-                              {achat.quantite.toFixed(2)} {p.unite} ≈{" "}
-                              {achat.cout.toFixed(2)} €
-                            </div>
-                          </div>
+                          );
+                        })
+                      ))}
+
+                    {view === "achats" && (
+                      <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
+                        {produits.filter(
+                          (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
+                        ).length === 0 ? (
+                          <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-60 font-black">
+                            Rien à racheter
+                          </p>
+                        ) : (
+                          produits
+                            .filter(
+                              (p) =>
+                                Number(p.quantite_restante) < Number(p.seuil_alerte),
+                            )
+                            .map((p) => {
+                              const achat = getAchatConseille(p);
+
+                              return (
+                                <div key={p.id} className="p-5 px-6">
+                                  <p className="font-bold text-sm text-gray-700 uppercase leading-none">
+                                    {p.nom}
+                                  </p>
+                                  <p className="text-[8px] font-black uppercase text-gray-300 mt-1">
+                                    {p.categorie}
+                                  </p>
+                                  {achat && (
+                                    <p className="text-[10px] font-black uppercase text-orange-600 mt-2">
+                                      {achat.quantite.toFixed(2)} {p.unite} ≈{" "}
+                                      {achat.cout.toFixed(2)} €
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })
                         )}
+                      </div>
+                    )}
+                  </main>
 
-                        <div className="flex gap-2 mt-4">
+                  <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
+                    <button
+                      onClick={() => setView("home")}
+                      className={`p-4 transition-all duration-300 ${view === "home" ? "text-blue-600 scale-125" : "text-gray-200"}`}
+                    >
+                      🏠
+                    </button>
+
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter"
+                    >
+                      ＋
+                    </button>
+
+                    <button
+                      onClick={() => setView("achats")}
+                      className={`p-4 transition-all duration-300 ${view === "achats" ? "text-blue-600 scale-125" : "text-gray-200"}`}
+                    >
+                      📦
+                    </button>
+                  </nav>
+                  {showAddModal && (
+                    <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-[2px] flex items-end justify-center z-50 pt-6">
+                      <div className="bg-[#f8fafc] w-full max-w-md rounded-t-[2.3rem] p-5 animate-up max-h-[88vh] overflow-y-auto shadow-2xl">
+                        <div className="flex justify-between items-center mb-5">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-500">
+                              Stock professionnel
+                            </p>
+                            <h2 className="text-xl font-black uppercase text-slate-800 leading-none mt-1">
+                              Ajouter un produit
+                            </h2>
+                          </div>
+
                           <button
-                            onClick={() => updateQuantity(p.id, -1)}
-                            className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                            onClick={() => setShowAddModal(false)}
+                            className="w-11 h-11 rounded-full bg-white border border-slate-200 text-slate-400 text-2xl flex items-center justify-center shadow-sm"
                           >
-                            -1
+                            ×
                           </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                              Produit
+                            </p>
+
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Nom du produit
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ex : Farine T55"
+                                  value={form.nom}
+                                  onChange={(e) => applyAutoMapping(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                    Catégorie
+                                  </label>
+                                  <select
+                                    value={form.categorie}
+                                    onChange={(e) =>
+                                      handleCategorieChange(e.target.value)
+                                    }
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                                  >
+                                    {categoriesPrincipales.map((cat) => (
+                                      <option key={cat} value={cat}>
+                                        {STRUCTURE_PRO[cat].icon} {cat}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                    Unité
+                                  </label>
+                                  <select
+                                    value={form.unite}
+                                    onChange={(e) =>
+                                      handleUniteChange(e.target.value)
+                                    }
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                                  >
+                                    {UNITES.map((unite) => (
+                                      <option key={unite.id} value={unite.id}>
+                                        {unite.id} — {unite.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Sous-catégorie
+                                </label>
+                                <select
+                                  value={form.sous_categorie}
+                                  onChange={(e) =>
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      sous_categorie: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
+                                >
+                                  {sousCategoriesDisponibles.map((sub) => (
+                                    <option key={sub.id} value={sub.id}>
+                                      {sub.icon} {sub.id}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                              Stock
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Quantité initiale
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0"
+                                  value={form.quantite_initiale}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      quantite_initiale: e.target.value,
+                                    })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Quantité restante
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0"
+                                  value={form.quantite_restante}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      quantite_restante: e.target.value,
+                                    })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div className="col-span-2">
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Seuil d’alerte
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0"
+                                  value={form.seuil_alerte}
+                                  onChange={(e) =>
+                                    setForm({ ...form, seuil_alerte: e.target.value })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                              Achat
+                            </p>
+
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Prix total d’achat
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={form.prix_total_achat}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      prix_total_achat: e.target.value,
+                                    })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3">
+                                <div className="text-[10px] font-black uppercase text-blue-500">
+                                  Prix unitaire estimé
+                                </div>
+                                <div className="text-lg font-black text-blue-700">
+                                  {calculPrixUnitaire(
+                                    form.prix_total_achat,
+                                    form.quantite_initiale,
+                                  ).toFixed(2)}{" "}
+                                  € / {form.unite || "unité"}
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Fournisseur
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Nom du fournisseur"
+                                  value={form.fournisseur}
+                                  onChange={(e) =>
+                                    setForm({ ...form, fournisseur: e.target.value })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Date d’achat
+                                </label>
+                                <input
+                                  type="date"
+                                  value={form.date_achat}
+                                  onChange={(e) =>
+                                    setForm({ ...form, date_achat: e.target.value })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                              Compléments
+                            </p>
+
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Date de péremption
+                                </label>
+                                <input
+                                  type="date"
+                                  value={form.date_peremption}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      date_peremption: e.target.value,
+                                    })
+                                  }
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                  Note
+                                </label>
+                                <textarea
+                                  placeholder="Informations complémentaires"
+                                  value={form.note}
+                                  onChange={(e) =>
+                                    setForm({ ...form, note: e.target.value })
+                                  }
+                                  className="w-full min-h-[100px] bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
                           <button
-                            onClick={() => updateQuantity(p.id, -0.5)}
-                            className="w-10 h-10 bg-white border border-gray-100 rounded-xl font-bold shadow-sm active:scale-90"
+                            onClick={handleAddProduct}
+                            className="w-full bg-blue-600 text-white rounded-[1.6rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
                           >
-                            -0.5
-                          </button>
-                          <button
-                            onClick={() => updateQuantity(p.id, 1)}
-                            className="w-10 h-10 bg-blue-600 text-white rounded-xl font-bold shadow-sm active:scale-90"
-                          >
-                            +1
+                            Enregistrer le produit
                           </button>
                         </div>
                       </div>
-                    );
-                  })
-                ))}
-
-              {view === "achats" && (
-                <div className="bg-white rounded-[2.5rem] shadow-sm divide-y divide-gray-50 overflow-hidden animate-up">
-                  {produits.filter(
-                    (p) => Number(p.quantite_restante) < Number(p.seuil_alerte),
-                  ).length === 0 ? (
-                    <p className="p-12 text-center text-gray-300 italic text-xs tracking-widest uppercase opacity-60 font-black">
-                      Rien à racheter
-                    </p>
-                  ) : (
-                    produits
-                      .filter(
-                        (p) =>
-                          Number(p.quantite_restante) < Number(p.seuil_alerte),
-                      )
-                      .map((p) => {
-                        const achat = getAchatConseille(p);
-
-                        return (
-                          <div key={p.id} className="p-5 px-6">
-                            <p className="font-bold text-sm text-gray-700 uppercase leading-none">
-                              {p.nom}
-                            </p>
-                            <p className="text-[8px] font-black uppercase text-gray-300 mt-1">
-                              {p.categorie}
-                            </p>
-                            {achat && (
-                              <p className="text-[10px] font-black uppercase text-orange-600 mt-2">
-                                {achat.quantite.toFixed(2)} {p.unite} ≈{" "}
-                                {achat.cout.toFixed(2)} €
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })
+                    </div>
                   )}
                 </div>
-              )}
-            </main>
+              );
+            };
 
-            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-md p-2 rounded-[2.5rem] flex justify-around items-center shadow-2xl z-40 border border-gray-100">
-              <button
-                onClick={() => setView("home")}
-                className={`p-4 transition-all duration-300 ${view === "home" ? "text-blue-600 scale-125" : "text-gray-200"}`}
-              >
-                🏠
-              </button>
-
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-xl active:scale-75 transition-all font-light tracking-tighter"
-              >
-                ＋
-              </button>
-
-              <button
-                onClick={() => setView("achats")}
-                className={`p-4 transition-all duration-300 ${view === "achats" ? "text-blue-600 scale-125" : "text-gray-200"}`}
-              >
-                📦
-              </button>
-            </nav>
-            {showAddModal && (
-              <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-[2px] flex items-end justify-center z-50 pt-6">
-                <div className="bg-[#f8fafc] w-full max-w-md rounded-t-[2.3rem] p-5 animate-up max-h-[88vh] overflow-y-auto shadow-2xl">
-                  <div className="flex justify-between items-center mb-5">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-500">
-                        Stock professionnel
-                      </p>
-                      <h2 className="text-xl font-black uppercase text-slate-800 leading-none mt-1">
-                        Ajouter un produit
-                      </h2>
-                    </div>
-
-                    <button
-                      onClick={() => setShowAddModal(false)}
-                      className="w-11 h-11 rounded-full bg-white border border-slate-200 text-slate-400 text-2xl flex items-center justify-center shadow-sm"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                        Produit
-                      </p>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Nom du produit
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Ex : Farine T55"
-                            value={form.nom}
-                            onChange={(e) => applyAutoMapping(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                              Catégorie
-                            </label>
-                            <select
-                              value={form.categorie}
-                              onChange={(e) =>
-                                handleCategorieChange(e.target.value)
-                              }
-                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
-                            >
-                              {categoriesPrincipales.map((cat) => (
-                                <option key={cat} value={cat}>
-                                  {STRUCTURE_PRO[cat].icon} {cat}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                              Unité
-                            </label>
-                            <select
-                              value={form.unite}
-                              onChange={(e) =>
-                                handleUniteChange(e.target.value)
-                              }
-                              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
-                            >
-                              {UNITES.map((unite) => (
-                                <option key={unite.id} value={unite.id}>
-                                  {unite.id} — {unite.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Sous-catégorie
-                          </label>
-                          <select
-                            value={form.sous_categorie}
-                            onChange={(e) =>
-                              setForm((prev) => ({
-                                ...prev,
-                                sous_categorie: e.target.value,
-                              }))
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none appearance-none"
-                          >
-                            {sousCategoriesDisponibles.map((sub) => (
-                              <option key={sub.id} value={sub.id}>
-                                {sub.icon} {sub.id}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                        Stock
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Quantité initiale
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="0"
-                            value={form.quantite_initiale}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                quantite_initiale: e.target.value,
-                              })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Quantité restante
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="0"
-                            value={form.quantite_restante}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                quantite_restante: e.target.value,
-                              })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div className="col-span-2">
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Seuil d’alerte
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="0"
-                            value={form.seuil_alerte}
-                            onChange={(e) =>
-                              setForm({ ...form, seuil_alerte: e.target.value })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                        Achat
-                      </p>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Prix total d’achat
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={form.prix_total_achat}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                prix_total_achat: e.target.value,
-                              })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3">
-                          <div className="text-[10px] font-black uppercase text-blue-500">
-                            Prix unitaire estimé
-                          </div>
-                          <div className="text-lg font-black text-blue-700">
-                            {calculPrixUnitaire(
-                              form.prix_total_achat,
-                              form.quantite_initiale,
-                            ).toFixed(2)}{" "}
-                            € / {form.unite || "unité"}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Fournisseur
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Nom du fournisseur"
-                            value={form.fournisseur}
-                            onChange={(e) =>
-                              setForm({ ...form, fournisseur: e.target.value })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Date d’achat
-                          </label>
-                          <input
-                            type="date"
-                            value={form.date_achat}
-                            onChange={(e) =>
-                              setForm({ ...form, date_achat: e.target.value })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                        Compléments
-                      </p>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Date de péremption
-                          </label>
-                          <input
-                            type="date"
-                            value={form.date_peremption}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                date_peremption: e.target.value,
-                              })
-                            }
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                            Note
-                          </label>
-                          <textarea
-                            placeholder="Informations complémentaires"
-                            value={form.note}
-                            onChange={(e) =>
-                              setForm({ ...form, note: e.target.value })
-                            }
-                            className="w-full min-h-[100px] bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none resize-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleAddProduct}
-                      className="w-full bg-blue-600 text-white rounded-[1.6rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
-                    >
-                      Enregistrer le produit
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      };
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<AppPro />);
+            const root = ReactDOM.createRoot(document.getElementById("root"));
+            root.render(<AppPro />);
     </script>
   </body>
 </html>
