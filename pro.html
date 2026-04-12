@@ -398,6 +398,16 @@
           note: "",
         });
 
+        const [showReapproModal, setShowReapproModal] = React.useState(false);
+        const [selectedProduct, setSelectedProduct] = React.useState(null);
+
+        const [reapproForm, setReapproForm] = React.useState({
+          quantite_ajoutee: "",
+          prix_total_achat: "",
+          fournisseur: "",
+          date_achat: "",
+        });
+
         const normalize = (str) =>
           (str || "")
             .toLowerCase()
@@ -559,6 +569,57 @@
         const sousCategoriesDisponibles =
           STRUCTURE_PRO[form.categorie]?.categories || [];
 
+        const openReapproModal = (product) => {
+          setSelectedProduct(product);
+          setReapproForm({
+            quantite_ajoutee: "",
+            prix_total_achat: "",
+            fournisseur: product.fournisseur || "",
+            date_achat: "",
+          });
+          setShowReapproModal(true);
+        };
+
+        const handleReapprovisionnement = async () => {
+          if (!selectedProduct) return;
+
+          const quantiteAjoutee = Number(reapproForm.quantite_ajoutee || 0);
+          const prixTotal = Number(reapproForm.prix_total_achat || 0);
+
+          if (quantiteAjoutee <= 0) {
+            alert("Veuillez entrer une quantité à ajouter");
+            return;
+          }
+
+          const prixUnitaire = calculPrixUnitaire(prixTotal, quantiteAjoutee);
+
+          const updatedProduct = {
+            ...selectedProduct,
+            quantite_initiale: quantiteAjoutee,
+            quantite_restante:
+              Number(selectedProduct.quantite_restante || 0) + quantiteAjoutee,
+            prix_total_achat: prixTotal,
+            prix_unitaire: prixUnitaire,
+            fournisseur: reapproForm.fournisseur,
+            date_achat: reapproForm.date_achat || null,
+          };
+
+          await saveProductPro(updatedProduct);
+
+          setProduits((prev) =>
+            prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p)),
+          );
+
+          setShowReapproModal(false);
+          setSelectedProduct(null);
+          setReapproForm({
+            quantite_ajoutee: "",
+            prix_total_achat: "",
+            fournisseur: "",
+            date_achat: "",
+          });
+        };
+
         return (
           <div className="max-w-md mx-auto min-h-screen pb-32">
             <header className="bg-slate-800 p-5 sticky top-0 z-30 border-b shadow-sm text-white">
@@ -717,6 +778,12 @@
                             className="min-w-[52px] h-11 bg-blue-600 text-white rounded-2xl font-black shadow-sm active:scale-95"
                           >
                             +1
+                          </button>
+                          <button
+                            onClick={() => openReapproModal(p)}
+                            className="mt-3 w-full h-11 bg-white border border-blue-200 text-blue-600 rounded-2xl font-black shadow-sm active:scale-95"
+                          >
+                            Réapprovisionner
                           </button>
                         </div>
                       </div>
@@ -1076,6 +1143,164 @@
                       className="w-full bg-blue-600 text-white rounded-[1.6rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
                     >
                       Enregistrer le produit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showReapproModal && selectedProduct && (
+              <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-[2px] flex items-end justify-center z-50 pt-6">
+                <div className="bg-[#f8fafc] w-full max-w-md rounded-t-[2.3rem] p-5 animate-up max-h-[88vh] overflow-y-auto shadow-2xl">
+                  <div className="flex justify-between items-center mb-5">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-500">
+                        Réapprovisionnement
+                      </p>
+                      <h2 className="text-xl font-black uppercase text-slate-800 leading-none mt-1">
+                        {selectedProduct.nom}
+                      </h2>
+                    </div>
+
+                    <button
+                      onClick={() => setShowReapproModal(false)}
+                      className="w-11 h-11 rounded-full bg-white border border-slate-200 text-slate-400 text-2xl flex items-center justify-center shadow-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                        Stock actuel
+                      </p>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+                        <div className="text-[10px] font-black uppercase text-slate-400">
+                          Restant avant ajout
+                        </div>
+                        <div className="text-lg font-black text-slate-700">
+                          {Number(
+                            selectedProduct.quantite_restante || 0,
+                          ).toFixed(2)}{" "}
+                          {selectedProduct.unite}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-[1.7rem] border border-slate-200 p-4 shadow-sm">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                        Nouvel achat
+                      </p>
+
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                            Quantité ajoutée
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0"
+                            value={reapproForm.quantite_ajoutee}
+                            onChange={(e) =>
+                              setReapproForm((prev) => ({
+                                ...prev,
+                                quantite_ajoutee: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                          />
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3">
+                          <div className="text-[10px] font-black uppercase text-blue-500">
+                            Stock après ajout
+                          </div>
+                          <div className="text-lg font-black text-blue-700">
+                            {(
+                              Number(selectedProduct.quantite_restante || 0) +
+                              Number(reapproForm.quantite_ajoutee || 0)
+                            ).toFixed(2)}{" "}
+                            {selectedProduct.unite}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                            Prix total d’achat
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={reapproForm.prix_total_achat}
+                            onChange={(e) =>
+                              setReapproForm((prev) => ({
+                                ...prev,
+                                prix_total_achat: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                          />
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3">
+                          <div className="text-[10px] font-black uppercase text-blue-500">
+                            Prix unitaire estimé
+                          </div>
+                          <div className="text-lg font-black text-blue-700">
+                            {calculPrixUnitaire(
+                              reapproForm.prix_total_achat,
+                              reapproForm.quantite_ajoutee,
+                            ).toFixed(2)}{" "}
+                            € / {selectedProduct.unite}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                            Fournisseur
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nom du fournisseur"
+                            value={reapproForm.fournisseur}
+                            onChange={(e) =>
+                              setReapproForm((prev) => ({
+                                ...prev,
+                                fournisseur: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                            Date d’achat
+                          </label>
+                          <input
+                            type="date"
+                            value={reapproForm.date_achat}
+                            onChange={(e) =>
+                              setReapproForm((prev) => ({
+                                ...prev,
+                                date_achat: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleReapprovisionnement}
+                      className="w-full bg-blue-600 text-white rounded-[1.6rem] py-4 font-black uppercase text-sm shadow-lg active:scale-[0.98] transition"
+                    >
+                      Valider le réapprovisionnement
                     </button>
                   </div>
                 </div>
